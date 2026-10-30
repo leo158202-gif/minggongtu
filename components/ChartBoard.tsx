@@ -9,8 +9,13 @@ import TimeNav, { type TimeView, getYearStemIndex, buildSiHuaOverlay } from './T
 interface ChartBoardProps {
   chart: ZiweiChart;
   onStarSelect?: (star: Star, palace: Palace) => void;
-  onPalaceSelect?: (palace: Palace) => void;
+  onPalaceSelect?: (palace: Palace | null) => void;
   onSiHuaClick?: (starName: string, siHua: string, view: TimeView) => void;
+  /** 由命盘页控制时，解读面板才能跟着本命 / 大限 / 流年走 */
+  timeView?: TimeView;
+  liunianYear?: number;
+  onTimeViewChange?: (view: TimeView) => void;
+  onLiunianYearChange?: (year: number) => void;
 }
 
 const BRANCH_GRID_POS: Record<number, [number, number]> = {
@@ -52,10 +57,29 @@ function getSanFangSiZheng(branch: number): [number, number, number, number] {
 
 const ANIMATION_ORDER = [5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
 
-export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick }: ChartBoardProps) {
+export default function ChartBoard({
+  chart,
+  onStarSelect,
+  onPalaceSelect,
+  onSiHuaClick,
+  timeView: timeViewProp,
+  liunianYear: liunianYearProp,
+  onTimeViewChange,
+  onLiunianYearChange,
+}: ChartBoardProps) {
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
-  const [timeView, setTimeView] = useState<TimeView>('mingpan');
-  const [liunianYear, setLiunianYear] = useState<number>(new Date().getFullYear());
+  const [uncontrolledView, setUncontrolledView] = useState<TimeView>('mingpan');
+  const [uncontrolledYear, setUncontrolledYear] = useState<number>(new Date().getFullYear());
+  const timeView = timeViewProp ?? uncontrolledView;
+  const liunianYear = liunianYearProp ?? uncontrolledYear;
+  const setTimeView = (view: TimeView) => {
+    onTimeViewChange?.(view);
+    if (timeViewProp === undefined) setUncontrolledView(view);
+  };
+  const setLiunianYear = (year: number) => {
+    onLiunianYearChange?.(year);
+    if (liunianYearProp === undefined) setUncontrolledYear(year);
+  };
 
   const palaceMap: Record<number, Palace> = {};
   chart.palaces.forEach(p => { palaceMap[p.branch] = p; });
@@ -77,10 +101,12 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
   const handlePalaceClick = (branch: number) => {
     const isDeselecting = selectedBranch === branch;
     setSelectedBranch(prev => prev === branch ? null : branch);
-    if (!isDeselecting) {
-      const palace = palaceMap[branch];
-      if (palace) onPalaceSelect?.(palace);
+    if (isDeselecting) {
+      onPalaceSelect?.(null);
+      return;
     }
+    const palace = palaceMap[branch];
+    if (palace) onPalaceSelect?.(palace);
   };
 
   // 三方四正

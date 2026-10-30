@@ -5,6 +5,7 @@ import BirthForm from '@/components/BirthForm';
 import ChartBoard from '@/components/ChartBoard';
 import InsightPanel from '@/components/InsightPanel';
 import { useTheme } from '@/components/ThemeProvider';
+import type { TimeView } from '@/components/TimeNav';
 import { generateChart } from '@/lib/ziwei/algorithm';
 import type { BirthInfo, ZiweiChart, Palace } from '@/lib/ziwei/types';
 import { SITE_NAME, UPSTREAM_NOTE, UPSTREAM_URL } from '@/lib/site';
@@ -18,11 +19,19 @@ export default function ChartPage() {
   const [chart, setChart] = useState<ZiweiChart | null>(null);
   const [selectedPalace, setSelectedPalace] = useState<Palace | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [timeView, setTimeView] = useState<TimeView>('mingpan');
+  const [liunianYear, setLiunianYear] = useState(() => new Date().getFullYear());
+
+  const resetReading = () => {
+    setSelectedPalace(null);
+    setTimeView('mingpan');
+    setLiunianYear(new Date().getFullYear());
+  };
 
   const startChart = (info: BirthInfo) => {
     try {
       setChart(generateChart(info));
-      setSelectedPalace(null);
+      resetReading();
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : '起盘失败，请检查出生日期。');
@@ -49,7 +58,7 @@ export default function ChartPage() {
           {chart && (
             <button
               type="button"
-              onClick={() => { setChart(null); setSelectedPalace(null); }}
+              onClick={() => { setChart(null); resetReading(); }}
               style={{
                 padding: '6px 12px',
                 cursor: 'pointer',
@@ -82,32 +91,46 @@ export default function ChartPage() {
         </div>
       </header>
 
-      {!chart ? (
-        <section style={{ maxWidth: 720, margin: '0 auto', padding: '40px 20px 64px' }}>
-          <p style={{ fontSize: 12, letterSpacing: '0.35em', color: 'var(--ac)', marginBottom: 8 }}>
-            紫微斗数
-          </p>
-          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: 'var(--tx-0)' }}>起盘</h1>
-          <p style={{ color: 'var(--tx-2)', marginBottom: 28, fontSize: 14, lineHeight: 1.7 }}>
-            填写出生年月日时。命盘在这台浏览器里算出来，接着可以看本命、大限和流年。
-          </p>
-          <BirthForm onSubmit={startChart} />
-          {error && (
-            <p role="alert" style={{ color: 'var(--ji)', fontSize: 13, marginTop: 12 }}>{error}</p>
-          )}
-          <p style={{ color: 'var(--tx-3)', fontSize: 12, marginTop: 28, lineHeight: 1.7 }}>
-            {UPSTREAM_NOTE}{' · '}
-            <a href={UPSTREAM_URL} style={{ color: 'var(--ac)' }}>{UPSTREAM_URL.replace('https://', '')}</a>
-          </p>
-        </section>
-      ) : (
-        <section style={{ maxWidth: 1280, margin: '0 auto', padding: '20px 16px 48px' }}>
-          <div className="chart-result">
-            <ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} />
-            <InsightPanel chart={chart} selectedPalace={selectedPalace} />
+      <section style={{ maxWidth: 1280, margin: '0 auto', padding: chart ? '20px 16px 48px' : '32px 16px 64px' }}>
+        <div className={chart ? 'chart-result' : 'chart-result chart-result-empty'}>
+          <div>
+            {!chart ? (
+              <>
+                <p style={{ fontSize: 12, letterSpacing: '0.35em', color: 'var(--ac)', marginBottom: 8 }}>
+                  紫微斗数
+                </p>
+                <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: 'var(--tx-0)' }}>起盘</h1>
+                <p style={{ color: 'var(--tx-2)', marginBottom: 28, fontSize: 14, lineHeight: 1.7 }}>
+                  填写出生年月日时。命盘在这台浏览器里算出来，接着可以看本命、大限和流年。右侧解读是固定话术，不起盘也可以先看说明。
+                </p>
+                <BirthForm onSubmit={startChart} />
+                {error && (
+                  <p role="alert" style={{ color: 'var(--ji)', fontSize: 13, marginTop: 12 }}>{error}</p>
+                )}
+                <p style={{ color: 'var(--tx-3)', fontSize: 12, marginTop: 28, lineHeight: 1.7 }}>
+                  {UPSTREAM_NOTE}{' · '}
+                  <a href={UPSTREAM_URL} style={{ color: 'var(--ac)' }}>{UPSTREAM_URL.replace('https://', '')}</a>
+                </p>
+              </>
+            ) : (
+              <ChartBoard
+                chart={chart}
+                onPalaceSelect={setSelectedPalace}
+                timeView={timeView}
+                liunianYear={liunianYear}
+                onTimeViewChange={setTimeView}
+                onLiunianYearChange={setLiunianYear}
+              />
+            )}
           </div>
-        </section>
-      )}
+          <InsightPanel
+            chart={chart}
+            selectedPalace={selectedPalace}
+            timeView={timeView}
+            liunianYear={liunianYear}
+          />
+        </div>
+      </section>
     </main>
   );
 }
