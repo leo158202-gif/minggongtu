@@ -24,7 +24,7 @@ import {
   STAR_TO_SLUG,
   SLUG_TO_STAR,
 } from '@/lib/seo/knowledge';
-import { SITE_URL } from '@/lib/site';
+import { SITE_NAME, SITE_URL } from '@/lib/site';
 
 // 允许动态参数：如果某个 star/topic 组合不在 generateStaticParams 列表中
 // 也允许运行时按需渲染，避免中文 URL 编码问题导致 404
@@ -85,10 +85,10 @@ export default async function KnowledgePage({ params }: { params: Promise<{ star
     '@type': 'Article',
     headline: `${star}入${data.palaceName}宫 · ${data.topicLabel}`,
     description: data.parsed.dingdiao,
-    author: { '@type': 'Organization', name: '紫微研究 · 倪海厦正宗' },
+    author: { '@type': 'Organization', name: `${SITE_NAME} · 倪海厦体系` },
     publisher: {
       '@type': 'Organization',
-      name: '紫微研究',
+      name: SITE_NAME,
       url: SITE_URL,
     },
     datePublished: '2026-04-28',
@@ -276,7 +276,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ star
 
       {/* 页脚 */}
       <footer style={{ borderTop: '1px solid rgba(184,146,42,0.15)', padding: '20px 24px', textAlign: 'center', fontSize: '11px', color: 'var(--tx-3)', letterSpacing: '0.1em' }}>
-        <div style={{ marginBottom: '6px' }}>紫微研究 · 基于倪海厦正宗体系 · 仅供学习参考</div>
+        <div style={{ marginBottom: '6px' }}>{SITE_NAME} · 基于倪海厦体系 · 仅供学习参考</div>
         <div style={{ opacity: 0.85 }}>本平台不构成任何医疗、投资、法律或重大决策建议</div>
       </footer>
     </div>

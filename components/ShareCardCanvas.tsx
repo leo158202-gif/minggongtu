@@ -92,7 +92,7 @@ export default function ShareCardCanvas({ chart, birth, highlight }: ShareCardPr
             color: 'white', fontSize: '15px', fontWeight: 700,
           }}>紫</div>
           <div>
-            <div style={{ fontSize: '15px', color: '#3d2f10', fontWeight: 600, letterSpacing: '0.12em', lineHeight: 1.2 }}>紫微命盘</div>
+            <div style={{ fontSize: '15px', color: '#3d2f10', fontWeight: 600, letterSpacing: '0.12em', lineHeight: 1.2 }}>命宫图</div>
             <div style={{ fontSize: '9px', color: '#a89b7c', letterSpacing: '0.18em', marginTop: '2px' }}>倪海厦正宗 · ZI WEI</div>
           </div>
         </div>

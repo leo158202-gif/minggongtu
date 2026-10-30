@@ -149,22 +149,20 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
   };
 
   // ─── 样式变量 ────────────────────────────────────────────
-  const bg = isDark ? 'rgba(8,16,40,0.85)' : 'rgba(255,255,255,0.92)';
-  const border = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(200,160,60,0.2)';
-  // 暗色模式标签提亮：从 rgba(74,112,144,1) → rgba(180,200,225,0.9)
-  const labelClr = isDark ? 'rgba(180,200,225,0.9)' : 'rgba(120,80,10,0.55)';
-  const inputBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,252,240,0.8)';
-  const inputBorder = isDark ? 'rgba(255,255,255,0.18)' : 'rgba(200,160,60,0.25)';
-  // 输入文字提亮：从 #c8d8f0 → #e8eef8
-  const inputClr = isDark ? '#e8eef8' : '#2a1a00';
-  const focusBorder = isDark ? 'rgba(212,168,67,0.5)' : 'rgba(180,120,20,0.5)';
+  const bg = isDark ? 'rgba(20,17,14,0.92)' : 'rgba(255,250,242,0.94)';
+  const border = isDark ? 'rgba(224,177,90,0.18)' : 'rgba(154,107,22,0.22)';
+  const labelClr = isDark ? 'rgba(232,214,180,0.9)' : 'rgba(110,76,14,0.7)';
+  const inputBg = isDark ? 'rgba(255,244,220,0.06)' : 'rgba(255,250,242,0.9)';
+  const inputBorder = isDark ? 'rgba(224,177,90,0.22)' : 'rgba(154,107,22,0.25)';
+  const inputClr = isDark ? '#f4ead8' : '#1c1610';
+  const focusBorder = isDark ? 'rgba(224,177,90,0.55)' : 'rgba(154,107,22,0.5)';
   const errorClr = isDark ? '#f87171' : '#dc2626';
-  const panelBg = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,250,235,0.7)';
-  const panelBorder = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(200,160,60,0.2)';
-  const goldText = isDark ? '#d4a843' : '#7a5008';
-  const summaryBg = isDark ? 'rgba(37,99,235,0.12)' : 'rgba(37,99,235,0.07)';
-  const summaryBorder = isDark ? 'rgba(37,99,235,0.35)' : 'rgba(37,99,235,0.25)';
-  const summaryClr = isDark ? 'rgba(147,197,253,0.9)' : 'rgba(37,99,235,0.85)';
+  const panelBg = isDark ? 'rgba(255,244,220,0.03)' : 'rgba(255,250,235,0.7)';
+  const panelBorder = isDark ? 'rgba(224,177,90,0.12)' : 'rgba(154,107,22,0.2)';
+  const goldText = isDark ? '#e0b15a' : '#8a5e12';
+  const summaryBg = isDark ? 'rgba(224,177,90,0.12)' : 'rgba(154,107,22,0.08)';
+  const summaryBorder = isDark ? 'rgba(224,177,90,0.35)' : 'rgba(154,107,22,0.28)';
+  const summaryClr = isDark ? '#f0d090' : '#6e4c0e';
 
   const inputStyle = {
     background: inputBg,
@@ -486,7 +484,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
               transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
               style={{ display: 'inline-block', width: '12px', height: '12px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }}
             />
-            紫微起盘中…
+            起盘中…
           </span>
         ) : '立即起盘 · 解命运密码'}
       </motion.button>}

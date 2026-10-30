@@ -8,22 +8,21 @@ const ThemeContext = createContext<{
   toggle: () => void;
 }>({ theme: 'dark', toggle: () => {} });
 
-function getInitialTheme(): Theme {
-  if (typeof document !== 'undefined') {
-    const attr = document.documentElement.getAttribute('data-theme');
-    if (attr === 'light' || attr === 'dark') return attr;
-  }
-  return 'dark';
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  // 首屏固定暗色，和服务端 HTML 一致，避免读 localStorage 造成 hydration 对不上、表单点了没反应。
+  const [theme, setTheme] = useState<Theme>('dark');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    const saved = localStorage.getItem('ziwei-theme');
+    const attr = document.documentElement.getAttribute('data-theme');
+    const next: Theme = saved === 'light' || saved === 'dark'
+      ? saved
+      : attr === 'light' || attr === 'dark'
+        ? attr
+        : 'dark';
+    setTheme(next);
     setMounted(true);
-    const saved = localStorage.getItem('ziwei-theme') as Theme | null;
-    if (saved === 'light' || saved === 'dark') setTheme(saved);
   }, []);
 
   useEffect(() => {

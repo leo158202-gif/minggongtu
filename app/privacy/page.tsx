@@ -1,4 +1,4 @@
-export const metadata = { title: '隐私政策 · 紫微命盘', description: '紫微命盘隐私政策' };
+export const metadata = { title: '隐私政策 · 命宫图', description: '命宫图隐私政策' };
 
 export default function PrivacyPage() {
   return (
@@ -9,14 +9,14 @@ export default function PrivacyPage() {
           <span>返回首页</span>
         </a>
         <div style={{ width: '1px', height: '20px', background: 'var(--bdr-med)' }} />
-        <span style={{ fontSize: '12px', color: 'var(--ac)', letterSpacing: '0.2em' }}>紫微命盘</span>
+        <span style={{ fontSize: '12px', color: 'var(--ac)', letterSpacing: '0.2em' }}>命宫图</span>
       </header>
       <main style={{ maxWidth: 800, margin: '0 auto', padding: '60px 24px 80px', color: 'var(--tx-1)', lineHeight: 1.8 }}>
         <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 8 }}>隐私政策</h1>
         <p style={{ fontSize: 12, color: 'var(--tx-3)', marginBottom: 32 }}>最后更新：2026年4月</p>
 
       <h2 style={{ fontSize: 18, marginTop: 32, marginBottom: 12 }}>1. 我们收集的信息</h2>
-      <p>为提供紫微命盘排盘与解读服务，我们可能收集以下信息：</p>
+      <p>为提供命宫图排盘与解读服务，我们可能收集以下信息：</p>
       <ul style={{ paddingLeft: 24 }}>
         <li><strong>命盘必要信息</strong>：姓名（选填）、出生公历年月日、出生时辰、性别、出生地经度</li>
         <li><strong>账号信息（注册后）</strong>：手机号（用于短信验证与会员服务）</li>

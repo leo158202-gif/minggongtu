@@ -1,3 +1,5 @@
+> This checkout is **命宫图**, a local Zi Wei charting site. Run it with `npm install` and `npm run dev` — see [README.md](./README.md). The text below is the upstream ziwei-doushu introduction; charting code remains attributed to that project.
+
 <div align="center">
 
 # Zi Wei Dou Shu · Open-Source Charting Engine
