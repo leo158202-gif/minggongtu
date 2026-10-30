@@ -1,75 +1,113 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import BirthForm from '@/components/BirthForm';
 import ChartBoard from '@/components/ChartBoard';
 import InsightPanel from '@/components/InsightPanel';
-import TimeNav, { type TimeView } from '@/components/TimeNav';
+import { useTheme } from '@/components/ThemeProvider';
 import { generateChart } from '@/lib/ziwei/algorithm';
 import type { BirthInfo, ZiweiChart, Palace } from '@/lib/ziwei/types';
+import { SITE_NAME, UPSTREAM_NOTE, UPSTREAM_URL } from '@/lib/site';
 
 /**
- * 命盘页 —— 开源版「排盘引擎 Demo」
- *
- * 这是一个最小可运行示例：用本仓库的排盘引擎 generateChart() 配合基础 UI
- * 组件，渲染一张完整紫微命盘 + 基础解读，并支持本命 / 大限 / 流年切换。
- *
- * 说明：线上商业版的完整交互界面（重设计的新 UI、AI 流式解读、合盘、分享
- * 卡片等）不在开源范围内；但排盘内核——安星算法、四化、格局识别、古籍库——
- * 完全开放（见 lib/ziwei/*），可自由二次开发出你自己的界面。
+ * 命盘页。表单交给本仓库的 generateChart()，命盘方格里的时间轴切换本命 / 大限 / 流年。
+ * 宫格布局与点击交互留在 ChartBoard，这里只换页面外壳。
  */
 export default function ChartPage() {
+  const { theme, toggle } = useTheme();
   const [chart, setChart] = useState<ZiweiChart | null>(null);
   const [selectedPalace, setSelectedPalace] = useState<Palace | null>(null);
-  const [view, setView] = useState<TimeView>('mingpan');
-  const [liunianYear, setLiunianYear] = useState(() => new Date().getFullYear());
+  const [error, setError] = useState<string | null>(null);
 
-  // ── 未起盘：展示出生信息表单 ──
-  if (!chart) {
-    return (
-      <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 20px' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>紫微斗数排盘</h1>
-        <p style={{ color: '#888', marginBottom: 32, fontSize: 14, lineHeight: 1.7 }}>
-          输入出生年月日时，开源排盘引擎即时生成命盘。
-          <br />
-          （本页为引擎 Demo，完整商业版界面不在开源范围；排盘内核完全开放。）
-        </p>
-        <BirthForm onSubmit={(info: BirthInfo) => setChart(generateChart(info))} />
-      </main>
-    );
-  }
+  const startChart = (info: BirthInfo) => {
+    try {
+      setChart(generateChart(info));
+      setSelectedPalace(null);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '起盘失败，请检查出生日期。');
+    }
+  };
 
-  // ── 已起盘：命盘 + 解读 ──
   return (
-    <main style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 16px' }}>
-      <button
-        type="button"
-        onClick={() => { setChart(null); setSelectedPalace(null); }}
+    <main style={{ minHeight: '100vh', background: 'var(--bg-0)', color: 'var(--tx-1)' }}>
+      <header
         style={{
-          marginBottom: 16, padding: '6px 14px', cursor: 'pointer',
-          border: '1px solid #ccc', borderRadius: 8, background: 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '14px 20px',
+          borderBottom: '1px solid var(--bdr)',
+          background: 'var(--bg-0)',
         }}
       >
-        ← 重新起盘
-      </button>
+        <Link href="/" style={{ color: 'var(--ac)', textDecoration: 'none', letterSpacing: '0.28em', fontSize: 13 }}>
+          {SITE_NAME}
+        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {chart && (
+            <button
+              type="button"
+              onClick={() => { setChart(null); setSelectedPalace(null); }}
+              style={{
+                padding: '6px 12px',
+                cursor: 'pointer',
+                border: '1px solid var(--bdr-med)',
+                borderRadius: 999,
+                background: 'transparent',
+                color: 'var(--tx-2)',
+                fontSize: 12,
+              }}
+            >
+              重新起盘
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={theme === 'dark' ? '切换亮色' : '切换暗色'}
+            style={{
+              padding: '6px 12px',
+              cursor: 'pointer',
+              border: '1px solid var(--ac-bdr)',
+              borderRadius: 999,
+              background: 'var(--ac-bg)',
+              color: 'var(--ac)',
+              fontSize: 12,
+            }}
+          >
+            {theme === 'dark' ? '亮色' : '暗色'}
+          </button>
+        </div>
+      </header>
 
-      <TimeNav
-        chart={chart}
-        view={view}
-        liunianYear={liunianYear}
-        onViewChange={setView}
-        onYearChange={setLiunianYear}
-      />
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 380px)',
-          gap: 20, marginTop: 16, alignItems: 'start',
-        }}
-      >
-        <ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} />
-        <InsightPanel chart={chart} selectedPalace={selectedPalace} />
-      </div>
+      {!chart ? (
+        <section style={{ maxWidth: 720, margin: '0 auto', padding: '40px 20px 64px' }}>
+          <p style={{ fontSize: 12, letterSpacing: '0.35em', color: 'var(--ac)', marginBottom: 8 }}>
+            紫微斗数
+          </p>
+          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: 'var(--tx-0)' }}>起盘</h1>
+          <p style={{ color: 'var(--tx-2)', marginBottom: 28, fontSize: 14, lineHeight: 1.7 }}>
+            填写出生年月日时。命盘在这台浏览器里算出来，接着可以看本命、大限和流年。
+          </p>
+          <BirthForm onSubmit={startChart} />
+          {error && (
+            <p role="alert" style={{ color: 'var(--ji)', fontSize: 13, marginTop: 12 }}>{error}</p>
+          )}
+          <p style={{ color: 'var(--tx-3)', fontSize: 12, marginTop: 28, lineHeight: 1.7 }}>
+            {UPSTREAM_NOTE}{' · '}
+            <a href={UPSTREAM_URL} style={{ color: 'var(--ac)' }}>{UPSTREAM_URL.replace('https://', '')}</a>
+          </p>
+        </section>
+      ) : (
+        <section style={{ maxWidth: 1280, margin: '0 auto', padding: '20px 16px 48px' }}>
+          <div className="chart-result">
+            <ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} />
+            <InsightPanel chart={chart} selectedPalace={selectedPalace} />
+          </div>
+        </section>
+      )}
     </main>
   );
 }

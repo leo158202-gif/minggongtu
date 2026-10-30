@@ -1,10 +1,10 @@
 'use client';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion';
 import StarField from '@/components/StarField';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
-import AnnouncementModal from '@/components/AnnouncementModal';
+import { SITE_NAME, UPSTREAM_NOTE, UPSTREAM_URL } from '@/lib/site';
 
 // ─── 滚动入场 wrapper ────────────────────────────────────
 function FadeIn({
@@ -54,7 +54,7 @@ function ThemeToggle() {
     >
       <div className="relative w-10 h-5 rounded-full flex-shrink-0"
         style={{
-          background: isDark ? 'rgba(12,24,64,0.95)' : 'rgba(230,195,80,0.55)',
+          background: isDark ? 'rgba(16,14,12,0.95)' : 'rgba(224,177,90,0.55)',
           transition: 'background 0.35s ease',
         }}>
         <motion.div
@@ -111,14 +111,14 @@ const FEATURES = [
     ],
   },
   {
-    tag: 'AI 解读',
-    title: '深度解盘\n不止于算',
-    subtitle: '倪海厦体系知识库 × Claude AI',
+    tag: '运限',
+    title: '本命大限\n流年同屏',
+    subtitle: '起盘之后在命盘上切换时间',
     points: [
-      '命格分析：从命宫主星出发，结合三方四正，给出全面的性格与人生格局判断',
-      '六大维度解读：事业方向、感情婚姻、财运模式、健康注意、家庭关系、子女缘分',
-      '大限流年追踪：当前10年大限重点、今年流年宫位的具体提示与行动建议',
-      '自由追问：针对你的命盘直接提问，「今年能换工作吗」「什么时候结婚运最好」',
+      '本命：十二宫、十四主星与生年四化',
+      '大限：按当前大限宫干叠加大限四化',
+      '流年：按公历年份切换流年四化',
+      '排盘在浏览器里完成，这一版不接解读接口',
     ],
   },
   {
@@ -140,7 +140,7 @@ const SECTIONS = [
     key: 'ziwei',
     name: '紫微',
     en: 'Zi Wei',
-    desc: '14 主星 · 13 宫位 · AI 解读',
+    desc: '14 主星 · 十二宫 · 本地起盘',
     status: 'ready' as const,
     when: '5 月',
     icon: '◉',  // 实心圆+内点，紫微星视觉
@@ -202,32 +202,29 @@ const NI_TEACHINGS = [
 function useColors(theme: Theme) {
   const d = theme === 'dark';
   return {
-    bgBase:       d ? '#020810'                                : '#f5efe0',
+    bgBase:       d ? '#100e0c'                                : '#f7f1e4',
     // nav 用与 bgBase 完全相同的不透明色，避免半透明叠加产生色差带
-    navBg:        d ? '#020810'                                : '#f5efe0',
-    navBorder:    d ? 'rgba(255,255,255,0.05)'                : 'rgba(160,120,30,0.15)',
-    goldGrad:     d ? 'linear-gradient(160deg,#c8993a 0%,#f0d070 40%,#c8993a 70%,#f0c755 100%)'
-                    : 'linear-gradient(160deg,#6a4206 0%,#9a6a10 40%,#6a4206 70%,#885010 100%)',
-    goldSolid:    d ? '#d4a843'                               : '#8b6410',
-    goldLine:     d ? 'rgba(212,168,67,0.4)'                  : 'rgba(140,100,20,0.4)',
-    tagText:      d ? 'rgba(212,168,67,0.6)'                  : 'rgba(120,80,10,0.65)',
-    // 亮色文字用冷灰系（A 方案核心）：暖底 + 冷字 → 视觉不审美疲劳
-    textPrimary:  d ? '#e8eef6'                               : '#1a1d24',
-    textSecond:   d ? '#b8c6df'                               : '#3a3f4a',
-    textMuted:    d ? '#9db0d0'                               : '#5a6275',
-    textFaint:    d ? 'rgba(240,246,255,0.56)'                : '#9da4b3',
-    // 冷色 accent（B 方案核心）：呼应暗色 quan 蓝；用于装饰性 glow / 链接 / 高亮
-    accent:       d ? '#3a78d4'                               : '#3a5a82',
-    accentSoft:   d ? 'rgba(58,120,212,0.18)'                 : 'rgba(58,90,130,0.10)',
-    cardBg:       d ? 'rgba(255,255,255,0.05)'                : 'rgba(255,255,255,0.88)',
-    cardBorder:   d ? 'rgba(255,255,255,0.10)'                : 'rgba(200,160,60,0.25)',
-    cardShadow:   d ? '0 4px 32px rgba(0,0,0,0.5)'           : '0 4px 24px rgba(140,100,20,0.12)',
-    featureBg:    d ? 'rgba(255,255,255,0.04)'                : 'rgba(255,255,255,0.75)',
-    featureBord:  d ? 'rgba(255,255,255,0.08)'                : 'rgba(200,160,60,0.2)',
-    glowTint:     d ? 'rgba(212,168,67,0.07)'                 : 'rgba(180,140,40,0.06)',
-    // 亮色 glow 真用蓝/紫——给整体氛围加冷色点缀
-    glowBlue:     d ? 'rgba(40,80,160,0.12)'                  : 'rgba(58,90,130,0.06)',
-    glowPurple:   d ? 'rgba(120,50,180,0.08)'                 : 'rgba(96,80,140,0.04)',
+    navBg:        d ? '#100e0c'                                : '#f7f1e4',
+    navBorder:    d ? 'rgba(224,177,90,0.16)'                 : 'rgba(154,107,22,0.18)',
+    goldGrad:     d ? 'linear-gradient(160deg,#c4922e 0%,#f0d090 42%,#e0b15a 70%,#f3d7a0 100%)'
+                    : 'linear-gradient(160deg,#6e4c0e 0%,#9a6b16 40%,#6e4c0e 70%,#8a5e12 100%)',
+    goldSolid:    d ? '#e0b15a'                               : '#9a6b16',
+    goldLine:     d ? 'rgba(224,177,90,0.45)'                 : 'rgba(154,107,22,0.4)',
+    tagText:      d ? 'rgba(224,177,90,0.72)'                 : 'rgba(110,76,14,0.72)',
+    textPrimary:  d ? '#f4ead8'                               : '#1c1610',
+    textSecond:   d ? '#d4c4a8'                               : '#3d3428',
+    textMuted:    d ? '#b5a48c'                               : '#5c5144',
+    textFaint:    d ? 'rgba(244,234,216,0.5)'                 : '#8a7d6c',
+    accent:       d ? '#e0b15a'                               : '#9a6b16',
+    accentSoft:   d ? 'rgba(224,177,90,0.14)'                 : 'rgba(154,107,22,0.10)',
+    cardBg:       d ? 'rgba(255,244,220,0.04)'                : 'rgba(255,250,242,0.9)',
+    cardBorder:   d ? 'rgba(224,177,90,0.16)'                 : 'rgba(154,107,22,0.22)',
+    cardShadow:   d ? '0 4px 32px rgba(0,0,0,0.5)'           : '0 4px 24px rgba(90,60,20,0.1)',
+    featureBg:    d ? 'rgba(255,244,220,0.04)'                : 'rgba(255,250,242,0.78)',
+    featureBord:  d ? 'rgba(224,177,90,0.14)'                 : 'rgba(154,107,22,0.2)',
+    glowTint:     d ? 'rgba(224,177,90,0.08)'                 : 'rgba(180,140,40,0.06)',
+    glowBlue:     d ? 'rgba(224,177,90,0.05)'                 : 'rgba(154,107,22,0.05)',
+    glowPurple:   d ? 'rgba(120,72,24,0.1)'                   : 'rgba(120,72,24,0.04)',
     niBg:         d ? 'rgba(255,255,255,0.04)'                : 'rgba(255,255,255,0.8)',
     niBorder:     d ? 'rgba(212,168,67,0.2)'                  : 'rgba(180,130,40,0.25)',
     niDivider:    d ? 'rgba(255,255,255,0.08)'                : 'rgba(180,130,40,0.12)',
@@ -240,7 +237,7 @@ function useColors(theme: Theme) {
     ctaBg:        d ? 'linear-gradient(135deg,#b8892a,#f0d070,#b8892a)'
                     : 'linear-gradient(135deg,#6a4206,#9a6810,#6a4206)',
     ctaText:      d ? '#08080a'                               : '#f8f3e8',
-    footerText:   d ? 'rgba(255,255,255,0.08)'                : '#d0b878',
+    footerText:   d ? 'rgba(224,177,90,0.62)'                 : '#8a6a30',
     scrollLine:   d ? 'rgba(212,168,67,0.3)'                  : 'rgba(140,100,20,0.3)',
     scrollText:   d ? 'rgba(255,255,255,0.12)'                : '#c0a870',
     altSection:   d ? 'rgba(255,255,255,0.02)'                : 'rgba(255,255,255,0.4)',
@@ -464,9 +461,6 @@ export default function HomePage() {
 
   return (
     <div style={{ background: c.bgBase, transition: 'background 0.35s ease' }} className="overflow-x-hidden">
-      {/* 致用户公告——首次访问全屏覆盖，关闭后才进入首页 */}
-      <AnnouncementModal />
-
       <StarField />
 
       {/* 全局光晕 */}
@@ -486,7 +480,7 @@ export default function HomePage() {
         }}>
         <div className="text-[11px] sm:text-xs tracking-[0.3em] sm:tracking-[0.4em] font-medium transition-colors duration-300 flex-shrink-0"
           style={{ color: c.goldSolid }}>
-          紫微命盘
+          {SITE_NAME}
         </div>
         <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
           <ThemeToggle />
@@ -531,7 +525,7 @@ export default function HomePage() {
                 fontSize: 'clamp(56px, 10vw, 124px)',
                 letterSpacing: '0.07em',
               }}>
-              紫微命盘
+              {SITE_NAME}
             </h1>
           </motion.div>
 
@@ -539,19 +533,19 @@ export default function HomePage() {
             transition={{ duration: 0.7, delay: 0.45 }}
             className="text-base md:text-lg tracking-[0.18em] mb-2"
             style={{ color: c.textSecond, fontWeight: 500 }}>
-            紫微为门 · 天地人为路 · 倪海厦为师
+            本命 · 大限 · 流年
           </motion.p>
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.55 }}
             className="text-xs md:text-sm tracking-[0.3em] mb-6"
             style={{ color: c.textMuted, opacity: 0.85 }}>
-            AI 答疑 · 知行合一
+            紫微斗数 · 在本地起盘
           </motion.p>
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.65 }}
             className="text-sm max-w-xl mx-auto leading-relaxed mb-10"
             style={{ color: c.textMuted }}>
-            输入出生年月日时，生成专属紫微斗数命盘 — 后续天纪、地纪、人纪学习模块陆续开放。
+            输入出生年月日时，在这台浏览器里生成紫微斗数命盘。
           </motion.p>
 
           {/* CTA */}
@@ -583,68 +577,6 @@ export default function HomePage() {
           </motion.div>
         </motion.div>
 
-        {/* 上线公告便利贴 — 桌面端绝对定位右侧 */}
-        <motion.div
-          initial={{ opacity: 0, x: 30, rotate: 0 }}
-          animate={{ opacity: 1, x: 0, rotate: -4 }}
-          transition={{ delay: 1.4, duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
-          className="absolute hidden lg:block pointer-events-none"
-          style={{
-            right: 'clamp(2%, 6vw, 8%)',
-            top: '54%',
-            maxWidth: '240px',
-          }}
-        >
-          <div style={{
-            background: 'linear-gradient(135deg, #fff5e3 0%, #ffe1c0 100%)',
-            border: '2px dashed rgba(232,132,62,0.45)',
-            borderRadius: '16px',
-            padding: '14px 18px',
-            boxShadow: '0 8px 24px rgba(196,90,45,0.18), 0 2px 6px rgba(196,90,45,0.1)',
-            fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
-          }}>
-            <div style={{ fontSize: '20px', marginBottom: '6px', lineHeight: 1 }}>🎁</div>
-            <div style={{ fontSize: '13px', lineHeight: 1.7, color: '#8b3a1a', fontWeight: 500 }}>
-              <span style={{ color: '#c45a2d', fontWeight: 700, fontSize: '14px' }}>5/1 — 5/8</span>
-              <span> 限时回馈</span>
-            </div>
-            <div style={{ fontSize: '13px', lineHeight: 1.7, color: '#8b3a1a', fontWeight: 500 }}>
-              全部功能 + AI 提问
-              <strong style={{ color: '#c45a2d' }}> 全免费</strong>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* 上线公告便利贴 — 手机端正常流式显示（hero 内容下方居中） */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0, rotate: -2 }}
-          transition={{ delay: 1.4, duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
-          className="lg:hidden mx-auto mt-8 mb-2 pointer-events-none"
-          style={{
-            maxWidth: 'min(280px, 84vw)',
-          }}
-        >
-          <div style={{
-            background: 'linear-gradient(135deg, #fff5e3 0%, #ffe1c0 100%)',
-            border: '2px dashed rgba(232,132,62,0.45)',
-            borderRadius: '14px',
-            padding: '12px 16px',
-            boxShadow: '0 6px 18px rgba(196,90,45,0.16), 0 2px 4px rgba(196,90,45,0.08)',
-            fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
-            textAlign: 'center',
-          }}>
-            <div style={{ fontSize: '18px', marginBottom: '4px', lineHeight: 1 }}>🎁</div>
-            <div style={{ fontSize: '12px', lineHeight: 1.7, color: '#8b3a1a', fontWeight: 500 }}>
-              <span style={{ color: '#c45a2d', fontWeight: 700, fontSize: '13px' }}>5/1 — 5/8</span>
-              <span> 限时回馈</span>
-            </div>
-            <div style={{ fontSize: '12px', lineHeight: 1.7, color: '#8b3a1a', fontWeight: 500 }}>
-              全部功能 + AI <strong style={{ color: '#c45a2d' }}>全免费</strong>
-            </div>
-          </div>
-        </motion.div>
-
         {/* 滚动提示（绝对定位，不影响 hero opacity 计算） */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           transition={{ delay: 2, duration: 1 }}
@@ -661,8 +593,8 @@ export default function HomePage() {
         <div className="absolute inset-0"
           style={{
             background: theme === 'dark'
-              ? 'linear-gradient(to bottom, #020810 0%, #020810 6%, #030a18 22%, #0d0820 40%, #0a0618 68%, #030a18 86%, #020810 100%)'
-              : 'linear-gradient(to bottom, #f5efe0 0%, #f5efe0 6%, #c08055 18%, #6a2810 32%, #1e0a02 50%, #1e0a02 70%, #6a2810 84%, #f5efe0 100%)',
+              ? 'linear-gradient(to bottom, #100e0c 0%, #100e0c 6%, #1a140e 22%, #2a1c12 40%, #1a120c 68%, #1a140e 86%, #100e0c 100%)'
+              : 'linear-gradient(to bottom, #f7f1e4 0%, #f7f1e4 6%, #c08055 18%, #6a2810 32%, #1e0a02 50%, #1e0a02 70%, #6a2810 84%, #f7f1e4 100%)',
             transition: 'background 0.4s ease',
           }} />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
@@ -1087,11 +1019,11 @@ export default function HomePage() {
           <p className="text-[10px] tracking-[0.6em] uppercase mb-6" style={{ color: c.tagText }}>开始你的命盘之旅</p>
           <h2 className={`grad-text ${theme === 'dark' ? 'grad-text-dark' : 'grad-text-light'} font-bold mb-8 tracking-tight leading-tight`}
             style={{ fontSize: 'clamp(32px, 5vw, 60px)' }}>
-            你的紫微命盘<br />等你解读
+            你的命盘<br />在本地生成
           </h2>
           <p className="text-sm mb-10 max-w-md mx-auto leading-relaxed" style={{ color: c.textSecond }}>
-            输入出生年月日时，在几秒内生成你的专属命盘<br />
-            再由 AI 按倪海厦体系为你深度解读
+            输入出生年月日时，生成本命盘<br />
+            再切换大限与流年
           </p>
           <motion.button
             whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
@@ -1172,7 +1104,11 @@ export default function HomePage() {
 
         <div className="text-center">
           <p className="text-[10px] tracking-wider mb-3" style={{ color: c.footerText }}>
-            紫微命盘 · 基于倪海厦正宗体系 · 仅供参考，命运掌握在自己手中
+            {SITE_NAME} · 本地紫微斗数排盘 · 仅供参考，命运掌握在自己手中
+          </p>
+          <p className="text-[10px] tracking-wider mb-3" style={{ color: c.footerText }}>
+            {UPSTREAM_NOTE}{' · '}
+            <a href={UPSTREAM_URL} style={{ color: c.footerText, textDecoration: 'underline' }}>github.com/Renhuai123/ziwei-doushu</a>
           </p>
           <p className="text-[10px] tracking-wider mb-3 max-w-2xl mx-auto leading-relaxed"
             style={{ color: c.footerText, opacity: 0.85 }}>

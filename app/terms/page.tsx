@@ -1,4 +1,4 @@
-export const metadata = { title: '服务条款 · 紫微命盘', description: '紫微命盘服务条款与用户协议' };
+export const metadata = { title: '服务条款 · 命宫图', description: '命宫图服务条款与用户协议' };
 
 export default function TermsPage() {
   return (
@@ -9,14 +9,14 @@ export default function TermsPage() {
           <span>返回首页</span>
         </a>
         <div style={{ width: '1px', height: '20px', background: 'var(--bdr-med)' }} />
-        <span style={{ fontSize: '12px', color: 'var(--ac)', letterSpacing: '0.2em' }}>紫微命盘</span>
+        <span style={{ fontSize: '12px', color: 'var(--ac)', letterSpacing: '0.2em' }}>命宫图</span>
       </header>
       <main style={{ maxWidth: 800, margin: '0 auto', padding: '60px 24px 80px', color: 'var(--tx-1)', lineHeight: 1.8 }}>
         <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 8 }}>服务条款</h1>
         <p style={{ fontSize: 12, color: 'var(--tx-3)', marginBottom: 32 }}>最后更新：2026年4月</p>
 
       <h2 style={{ fontSize: 18, marginTop: 32, marginBottom: 12 }}>1. 服务概述</h2>
-      <p>紫微命盘（以下简称"本平台"）基于倪海厦《天纪》紫微斗数体系提供命盘排盘与解读服务。本平台所有命理内容仅供参考，<strong>不构成任何医疗、投资、法律、心理咨询或人生重大决策建议</strong>。</p>
+      <p>命宫图（以下简称"本平台"）基于倪海厦《天纪》紫微斗数体系提供命盘排盘与解读服务。本平台所有命理内容仅供参考，<strong>不构成任何医疗、投资、法律、心理咨询或人生重大决策建议</strong>。</p>
 
       <h2 style={{ fontSize: 18, marginTop: 32, marginBottom: 12 }}>2. 用户行为规范</h2>
       <p>使用本平台即表示您同意：</p>
