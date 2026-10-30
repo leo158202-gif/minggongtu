@@ -161,8 +161,129 @@ body {
   margin-top: 16px;
   align-items: start;
 }
+.chart-result-empty {
+  justify-content: center;
+  grid-template-columns: minmax(0, 720px) minmax(280px, 380px);
+}
 @media (max-width: 900px) {
-  .chart-result { grid-template-columns: minmax(0, 1fr); }
+  .chart-result,
+  .chart-result-empty { grid-template-columns: minmax(0, 1fr); }
+}
+
+.insight-panel {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 88px);
+  overflow: auto;
+  padding: 16px 16px 20px;
+  border-radius: 12px;
+  background: var(--t-surface);
+  color: var(--t-text);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--sh-sm);
+}
+.insight-panel-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--t-gold);
+}
+.insight-kicker {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--t-text2);
+}
+.insight-layer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--t-text);
+}
+.insight-layer span {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--t-gold);
+}
+.insight-hint,
+.insight-empty p,
+.insight-block p,
+.insight-answer p,
+.insight-foot {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--t-text2);
+}
+.insight-empty {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--t-border);
+  background: var(--t-bg);
+}
+.insight-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--t-text);
+}
+.insight-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+.insight-questions button {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border);
+  background: var(--t-bg);
+  color: var(--t-text);
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.insight-questions button.is-on {
+  border-color: var(--t-border-acc);
+  background: var(--ac-bg);
+  color: var(--t-gold);
+}
+.insight-block,
+.insight-answer {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--t-border);
+  background: var(--t-bg);
+}
+.insight-block.is-current {
+  border-color: var(--t-border-acc);
+  box-shadow: inset 0 0 0 1px var(--ac-bdr);
+}
+.insight-block h3,
+.insight-answer h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--t-text);
+}
+.insight-block.is-current h3 {
+  color: var(--t-gold);
+}
+.insight-foot {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--t-faint);
+}
+@media (max-width: 900px) {
+  .insight-panel {
+    position: static;
+    max-height: none;
+  }
 }
 
 /* ─── 工具类 ─────────────────────────────────────────────── */
