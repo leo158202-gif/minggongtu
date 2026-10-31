@@ -101,7 +101,7 @@ export default function ChartPage() {
                 </p>
                 <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: 'var(--tx-0)' }}>起盘</h1>
                 <p style={{ color: 'var(--tx-2)', marginBottom: 28, fontSize: 14, lineHeight: 1.7 }}>
-                  填写出生年月日时。命盘在这台浏览器里算出来，接着可以看本命、大限和流年。右侧解读是固定话术，不起盘也可以先看说明。
+                  填写出生年月日时。命盘在这台浏览器里算出来，接着可以看本命、大限和流年。右侧上面是固定说明，起盘后可以在下面继续追问。
                 </p>
                 <BirthForm onSubmit={startChart} />
                 {error && (
