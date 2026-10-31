@@ -9,6 +9,7 @@ import {
   hasReadableChart,
   type ReadingContext,
 } from '@/lib/ziwei/fixed-reading';
+import InsightChat from './InsightChat';
 
 interface InsightPanelProps {
   chart?: ZiweiChart | null;
@@ -52,19 +53,20 @@ export default function InsightPanel({
   }, [questionId]);
 
   return (
-    <aside className="insight-panel" aria-label="解读" data-testid="insight-panel">
+    <aside className={reading ? 'insight-panel is-ready' : 'insight-panel'} aria-label="解读" data-testid="insight-panel">
       <header className="insight-panel-head">
         <h2>解读</h2>
-        <p className="insight-kicker">固定话术 · 只读这张盘</p>
+        <p className="insight-kicker">上面是固定说明，下面可以继续问</p>
       </header>
 
+      <div className="insight-scroll">
       {!reading ? (
         <div className="insight-empty" data-testid="insight-empty">
           <p className="insight-empty-title">还没有可看的命盘</p>
           <p>
             起盘之后，这里会按盘上的宫位和主星写出本命说明，以及「流年怎么看」「大限怎么看」。
           </p>
-          <p>话术是写好的规则，不联网，也不调用解读接口。</p>
+          <p>上面的说明是写好的规则，不联网。起盘后可以在下面向 AI 追问。</p>
         </div>
       ) : (
         <>
@@ -127,6 +129,13 @@ export default function InsightPanel({
           <p className="insight-foot">以上按当前命盘填入宫位和星曜，没有调用外部解读接口。</p>
         </>
       )}
+      </div>
+      <InsightChat
+        chart={reading ? chart : null}
+        timeView={timeView}
+        liunianYear={liunianYear}
+        selectedPalace={selectedPalace}
+      />
     </aside>
   );
 }
