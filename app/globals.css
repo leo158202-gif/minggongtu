@@ -382,6 +382,117 @@ body {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.school-switch,
+.bazi-settings,
+.bazi-cycles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.school-switch {
+  margin: 0 0 16px;
+}
+.school-switch button,
+.bazi-settings button,
+.bazi-cycles button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border);
+  background: var(--t-bg);
+  color: var(--t-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.school-switch button.is-on,
+.bazi-settings button.is-on,
+.bazi-cycles button.is-on {
+  border-color: var(--t-border-acc);
+  background: var(--ac-bg);
+  color: var(--t-gold);
+}
+.bazi-settings {
+  margin: 0 0 14px;
+}
+.bazi-settings label,
+.bazi-settings p {
+  color: var(--tx-2);
+  font-size: 13px;
+}
+.bazi-settings label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bazi-settings p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--tx-3);
+}
+.bazi-board {
+  color: var(--t-text);
+}
+.bazi-kicker {
+  margin: 0;
+  color: var(--t-gold);
+  letter-spacing: 0.28em;
+  font-size: 12px;
+}
+.bazi-board h2,
+.bazi-cycle-block h3,
+.bazi-pillars h3 {
+  margin: 8px 0;
+  color: var(--t-text);
+}
+.bazi-target,
+.bazi-caliber,
+.bazi-meta,
+.bazi-credit {
+  margin: 0 0 10px;
+  color: var(--t-text2);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.bazi-target {
+  color: var(--t-gold);
+  font-weight: 600;
+}
+.bazi-pillars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.bazi-pillars article {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--t-border);
+  background: var(--t-bg);
+}
+.bazi-ganzhi {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--t-gold);
+}
+.bazi-pillars p,
+.bazi-cycles {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.bazi-cycles {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.bazi-credit {
+  font-size: 12px;
+  color: var(--t-faint);
+}
+@media (max-width: 700px) {
+  .bazi-pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 900px) {
   .insight-panel,
   .insight-panel.is-ready {

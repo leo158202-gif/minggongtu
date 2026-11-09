@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { BaziAiContext } from '@/lib/bazi/ai-context';
 import { buildAiChartContext, type AiView } from '@/lib/ziwei/ai-chart-context';
 import { hasReadableChart } from '@/lib/ziwei/fixed-reading';
 import type { Palace, ZiweiChart } from '@/lib/ziwei/types';
@@ -10,6 +11,9 @@ interface InsightChatProps {
   timeView?: AiView;
   liunianYear?: number;
   selectedPalace?: Palace | null;
+  school?: 'ziwei' | 'bazi';
+  baziContext?: BaziAiContext | null;
+  conversationKey?: string;
 }
 
 interface Turn {
@@ -24,14 +28,20 @@ export default function InsightChat({
   timeView = 'mingpan',
   liunianYear = new Date().getFullYear(),
   selectedPalace,
+  school = 'ziwei',
+  baziContext = null,
+  conversationKey,
 }: InsightChatProps) {
-  const ready = hasReadableChart(chart);
-  const sessionKey = ready
+  const ziweiReady = school !== 'bazi' && hasReadableChart(chart);
+  const baziReady = school === 'bazi' && !!baziContext;
+  const ready = ziweiReady || baziReady;
+  const birthKey = ziweiReady
     ? [chart.birthInfo.year, chart.birthInfo.month, chart.birthInfo.day, chart.birthInfo.hour, chart.birthInfo.gender, chart.birthInfo.name ?? ''].join('|')
     : '';
+  const sessionKey = conversationKey ?? (ready ? `${school}|${birthKey}` : school);
   const context = useMemo(
-    () => (ready ? buildAiChartContext(chart, { view: timeView, liunianYear, selectedPalace }) : null),
-    [ready, chart, timeView, liunianYear, selectedPalace],
+    () => (ziweiReady ? buildAiChartContext(chart, { view: timeView, liunianYear, selectedPalace }) : null),
+    [ziweiReady, chart, timeView, liunianYear, selectedPalace],
   );
 
   const [messages, setMessages] = useState<Turn[]>([]);
@@ -56,13 +66,16 @@ export default function InsightChat({
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, loading]);
 
-  const contextLabel = context
-    ? `${context.activeLayer}${context.selectedPalace ? ` · 点中${context.selectedPalace.name}` : ' · 未点宫'}`
-    : '未起盘';
+  const contextLabel = school === 'bazi'
+    ? (baziContext?.readingTarget ?? '未起盘')
+    : (context
+      ? `${context.activeLayer}${context.selectedPalace ? ` · 点中${context.selectedPalace.name}` : ' · 未点宫'}`
+      : '未起盘');
 
   const send = async () => {
     const question = input.trim();
-    if (!ready || !context || !question || loading) return;
+    if (!ready || !question || loading) return;
+    if (school === 'bazi' ? !baziContext : !context) return;
     const nextMessages: Turn[] = [...messages, { role: 'user', content: question }];
     const seq = sessionRef.current;
     abortRef.current?.abort();
@@ -77,10 +90,9 @@ export default function InsightChat({
       const res = await fetch('/api/interpret', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: nextMessages,
-          context,
-        }),
+        body: JSON.stringify(school === 'bazi'
+          ? { school: 'bazi', messages: nextMessages, context: baziContext }
+          : { school: 'ziwei', messages: nextMessages, context }),
         signal: controller.signal,
       });
       const data = await res.json().catch(() => null);
@@ -108,7 +120,9 @@ export default function InsightChat({
       <h3>AI 追问</h3>
       {ready ? (
         <p className="insight-ai-note">
-          结合当前本命、大限、流年和点中的宫，回答会落到建议和趋势。对话只留在这个页面里。
+          {school === 'bazi'
+            ? '结合当前四柱、大运和流年，回答会落到建议和趋势。这段对话和紫微分开，只留在这个页面里。'
+            : '结合当前本命、大限、流年和点中的宫，回答会落到建议和趋势。对话只留在这个页面里。'}
         </p>
       ) : (
         <p className="insight-ai-note" data-testid="insight-ai-disabled">
@@ -149,7 +163,7 @@ export default function InsightChat({
           maxLength={800}
           rows={3}
           disabled={!ready || loading}
-          placeholder={ready ? '例如：这一步大限，事业上宜进还是宜守？' : '请先起盘'}
+          placeholder={ready ? (school === 'bazi' ? '例如：这一步大运，工作上宜守还是宜动？' : '例如：这一步大限，事业上宜进还是宜守？') : '请先起盘'}
           onChange={event => setInput(event.target.value)}
           onKeyDown={event => {
             if (event.key === 'Enter' && !event.shiftKey) {
