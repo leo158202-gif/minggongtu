@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { BaziAiContext } from '@/lib/bazi/ai-context';
 import type { Palace, ZiweiChart } from '@/lib/ziwei/types';
 import type { TimeView } from './TimeNav';
 import {
@@ -16,6 +17,9 @@ interface InsightPanelProps {
   selectedPalace?: Palace | null;
   timeView?: TimeView;
   liunianYear?: number;
+  school?: 'ziwei' | 'bazi';
+  baziContext?: BaziAiContext | null;
+  conversationKey?: string;
 }
 
 export default function InsightPanel({
@@ -23,6 +27,9 @@ export default function InsightPanel({
   selectedPalace,
   timeView = 'mingpan',
   liunianYear = new Date().getFullYear(),
+  school = 'ziwei',
+  baziContext = null,
+  conversationKey,
 }: InsightPanelProps) {
   const [questionId, setQuestionId] = useState<string | null>(null);
 
@@ -33,8 +40,8 @@ export default function InsightPanel({
   }), [timeView, liunianYear, selectedPalace]);
 
   const reading = useMemo(() => (
-    hasReadableChart(chart) ? buildChartReading(chart, ctx) : null
-  ), [chart, ctx]);
+    school !== 'bazi' && hasReadableChart(chart) ? buildChartReading(chart, ctx) : null
+  ), [chart, ctx, school]);
 
   const answer = useMemo(() => {
     if (!hasReadableChart(chart) || !questionId) return null;
@@ -53,14 +60,26 @@ export default function InsightPanel({
   }, [questionId]);
 
   return (
-    <aside className={reading ? 'insight-panel is-ready' : 'insight-panel'} aria-label="解读" data-testid="insight-panel">
+    <aside className={(reading || baziContext) ? 'insight-panel is-ready' : 'insight-panel'} aria-label="解读" data-testid="insight-panel">
       <header className="insight-panel-head">
         <h2>解读</h2>
-        <p className="insight-kicker">上面是固定说明，下面可以继续问</p>
+        <p className="insight-kicker">{school === 'bazi' ? '当前解读的是八字盘' : '上面是固定说明，下面可以继续问'}</p>
       </header>
 
       <div className="insight-scroll">
-      {!reading ? (
+      {school === 'bazi' ? (
+        <div className="insight-block" data-testid="bazi-insight">
+          <h3>正在解读</h3>
+          <p>{baziContext?.readingTarget ?? '还没有八字盘。'}</p>
+          {baziContext && (
+            <>
+              <p>{baziContext.correction}</p>
+              <p>子时：{baziContext.sectLabel}。年柱、月柱按节气交换，不按农历初一或公历月初。</p>
+              <p>追问只带着这张八字盘。切回紫微斗数后，固定说明仍在，两次对话互不混用。</p>
+            </>
+          )}
+        </div>
+      ) : !reading ? (
         <div className="insight-empty" data-testid="insight-empty">
           <p className="insight-empty-title">还没有可看的命盘</p>
           <p>
@@ -131,10 +150,13 @@ export default function InsightPanel({
       )}
       </div>
       <InsightChat
-        chart={reading ? chart : null}
+        chart={school === 'bazi' ? null : (reading ? chart : null)}
         timeView={timeView}
         liunianYear={liunianYear}
         selectedPalace={selectedPalace}
+        school={school}
+        baziContext={school === 'bazi' ? baziContext : null}
+        conversationKey={conversationKey}
       />
     </aside>
   );

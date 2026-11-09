@@ -2,6 +2,7 @@
  * 命盘 AI 追问的服务端组装。
  * 密钥只从环境变量读取，不进入提示词、响应或日志。
  */
+import { buildBaziSystemPrompt, type BaziAiContext } from '../bazi/ai-context';
 import type { SiHua } from './types';
 import type { AiChartContext, AiStarFact, AiTransformFact, AiView } from './ai-chart-context';
 
@@ -9,10 +10,18 @@ export const DEEPSEEK_CHAT_COMPLETIONS_URL = 'https://api.deepseek.com/chat/comp
 export const DEEPSEEK_MODEL = 'deepseek-chat';
 export const AI_DISCLAIMER = '仅供参考、非绝对预言';
 
+/** 用户输入保持 800 字。助手回复会原样进入下一轮，不能再用同一上限，否则第二句必被拒绝。 */
+export const CHAT_TURN_LIMITS = {
+  maxTurns: 24,
+  user: 800,
+  assistant: 4000,
+} as const;
+
 export const AI_ERRORS = {
   missingKey: '服务端未配置 AI 密钥，暂时不能回答。',
   badRequest: '请求格式不对，请重新发送。',
   needChart: '请先起盘后再提问。',
+  needBazi: '请先排好八字盘后再提问。',
   upstream: '解读服务暂时连不上，请稍后再试。',
   busy: '解读服务正忙，请稍后再试。',
   emptyReply: '解读没有返回内容，请再试一次。',
@@ -33,7 +42,8 @@ export interface ChatTurn {
 }
 
 interface PreparedInterpret {
-  context: AiChartContext;
+  school: 'ziwei' | 'bazi';
+  context: AiChartContext | BaziAiContext;
   turns: ChatTurn[];
 }
 
@@ -60,9 +70,16 @@ export function buildSystemPrompt(context: AiChartContext): string {
   ].join('\n');
 }
 
-export function buildDeepSeekMessages(context: AiChartContext, turns: ChatTurn[]): { role: string; content: string }[] {
+export function buildDeepSeekMessages(
+  context: AiChartContext | BaziAiContext,
+  turns: ChatTurn[],
+  school: 'ziwei' | 'bazi' = 'ziwei',
+): { role: string; content: string }[] {
+  const content = school === 'bazi'
+    ? buildBaziSystemPrompt(context as BaziAiContext)
+    : buildSystemPrompt(context as AiChartContext);
   return [
-    { role: 'system', content: buildSystemPrompt(context) },
+    { role: 'system', content },
     ...turns.map(turn => ({ role: turn.role, content: turn.content })),
   ];
 }
@@ -87,7 +104,7 @@ export async function completeInterpret(request: Request, fetchImpl: typeof fetc
   const prepared = prepareInterpret(payload);
   if ('error' in prepared) return jsonError(prepared.error, prepared.status);
 
-  const messages = buildDeepSeekMessages(prepared.context, prepared.turns);
+  const messages = buildDeepSeekMessages(prepared.context, prepared.turns, prepared.school);
   let upstream: Response;
   try {
     upstream = await fetchImpl(DEEPSEEK_CHAT_COMPLETIONS_URL, {
@@ -126,22 +143,77 @@ export async function completeInterpret(request: Request, fetchImpl: typeof fetc
 
 function prepareInterpret(payload: unknown): PreparedInterpret | { error: string; status: number } {
   if (!isRecord(payload)) return { error: AI_ERRORS.badRequest, status: 400 };
-  const context = parseAiChartContext(payload.context);
-  if (!context) return { error: AI_ERRORS.needChart, status: 400 };
   const turns = parseChatTurns(payload.messages);
   if (!turns) return { error: AI_ERRORS.badRequest, status: 400 };
-  return { context, turns };
+  if (payload.school === 'bazi') {
+    const context = parseBaziAiContext(payload.context);
+    if (!context) return { error: AI_ERRORS.needBazi, status: 400 };
+    return { school: 'bazi', context, turns };
+  }
+  const context = parseAiChartContext(payload.context);
+  if (!context) return { error: AI_ERRORS.needChart, status: 400 };
+  return { school: 'ziwei', context, turns };
+}
+
+export function parseBaziAiContext(value: unknown): BaziAiContext | null {
+  if (!isRecord(value) || value.school !== 'bazi') return null;
+  const readingTarget = shortText(value.readingTarget, 180);
+  const pillars = parseBaziPillars(value.pillars);
+  if (!readingTarget || !pillars) return null;
+  const context: BaziAiContext = {
+    school: 'bazi',
+    readingTarget,
+    calendarLabel: shortText(value.calendarLabel, 20) ?? '',
+    sectLabel: shortText(value.sectLabel, 40) ?? '',
+    trueSolar: value.trueSolar === true,
+    correction: shortText(value.correction, 240) ?? '',
+    dayMaster: shortText(value.dayMaster, 2) ?? '',
+    dayMasterElement: shortText(value.dayMasterElement, 2) ?? '',
+    pillars,
+    fiveElements: shortText(value.fiveElements, 80) ?? '',
+    decades: parseShortList(value.decades, 16, 80),
+    selectedDecade: shortText(value.selectedDecade, 80) ?? '',
+    selectedYear: shortText(value.selectedYear, 40) ?? '',
+  };
+  if (JSON.stringify(context).length > 12_000) return null;
+  return context;
+}
+
+function parseBaziPillars(value: unknown): BaziAiContext['pillars'] | null {
+  if (!Array.isArray(value) || value.length !== 4) return null;
+  const pillars: BaziAiContext['pillars'] = [];
+  for (const item of value) {
+    if (!isRecord(item)) return null;
+    const label = shortText(item.label, 8);
+    const ganZhi = shortText(item.ganZhi, 4);
+    if (!label || !ganZhi) return null;
+    pillars.push({
+      label,
+      ganZhi,
+      naYin: shortText(item.naYin, 12) ?? '',
+      wuXing: shortText(item.wuXing, 8) ?? '',
+      mainStar: shortText(item.mainStar, 8) ?? '',
+      cangGan: shortText(item.cangGan, 80) ?? '',
+    });
+  }
+  return pillars;
+}
+
+function parseShortList(value: unknown, maxItems: number, maxLen: number): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(item => shortText(item, maxLen)).filter((item): item is string => !!item).slice(0, maxItems);
 }
 
 export function parseChatTurns(value: unknown): ChatTurn[] | null {
-  if (!Array.isArray(value) || value.length === 0 || value.length > 16) return null;
+  if (!Array.isArray(value) || value.length === 0 || value.length > CHAT_TURN_LIMITS.maxTurns) return null;
   const turns: ChatTurn[] = [];
   for (const item of value) {
     if (!isRecord(item)) return null;
     if (item.role !== 'user' && item.role !== 'assistant') return null;
     if (typeof item.content !== 'string') return null;
     const content = item.content.trim();
-    if (!content || content.length > 800) return null;
+    const limit = item.role === 'user' ? CHAT_TURN_LIMITS.user : CHAT_TURN_LIMITS.assistant;
+    if (!content || content.length > limit) return null;
     turns.push({ role: item.role, content });
   }
   if (turns[turns.length - 1]?.role !== 'user') return null;
@@ -309,7 +381,7 @@ function extractReply(data: unknown): string {
   if (!isRecord(data) || !Array.isArray(data.choices) || !isRecord(data.choices[0])) return '';
   const message = data.choices[0].message;
   if (!isRecord(message) || typeof message.content !== 'string') return '';
-  return message.content.trim().slice(0, 4000);
+  return message.content.trim().slice(0, CHAT_TURN_LIMITS.assistant);
 }
 
 function redactSecret(text: string, secret: string): string {
