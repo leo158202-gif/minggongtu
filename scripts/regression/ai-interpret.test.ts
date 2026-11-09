@@ -8,7 +8,7 @@ import { generateChart } from '../../lib/ziwei/algorithm';
 import { buildAiChartContext } from '../../lib/ziwei/ai-chart-context';
 import { buildBaziAiContext } from '../../lib/bazi/ai-context';
 import { castBazi } from '../../lib/bazi/cast';
-import { AI_DISCLAIMER, AI_ERRORS, DEEPSEEK_CHAT_COMPLETIONS_URL } from '../../lib/ziwei/ai-interpret';
+import { AI_DISCLAIMER, AI_ERRORS, CHAT_TURN_LIMITS, DEEPSEEK_CHAT_COMPLETIONS_URL } from '../../lib/ziwei/ai-interpret';
 import { POST } from '../../app/api/interpret/route';
 import type { BirthInfo } from '../../lib/ziwei/types';
 
@@ -234,6 +234,88 @@ process.env.MINGGONGTU_AI_API_KEY = secret;
   }));
   if (mixed.status === 500 || mixed.json?.error !== AI_ERRORS.needBazi) fail('把紫微盘塞进八字请求时没有拒绝');
   else ok('八字接口拒绝紫微盘上下文');
+}
+
+{
+  const followChart = castBazi({
+    gender: 'male',
+    calendar: 'solar',
+    birthDate: '1993-04-04',
+    birthTime: '23:30',
+    leapMonth: false,
+    sect: 2,
+    trueSolar: true,
+    longitude: 113.3,
+  });
+  const decadeIndex = followChart.decades.findIndex(item => item.years.some(year => year.year === 2026));
+  const followContext = buildBaziAiContext(followChart, decadeIndex, 2026);
+  const longBody = '这步大运宜守成，不宜同时另起一条线。'.repeat(50);
+  if (longBody.length <= CHAT_TURN_LIMITS.user) fail(`回归样本没有超过用户上限: ${longBody.length}`);
+  let followSystem = '';
+  globalThis.fetch = (async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    followSystem = '';
+    const raw = typeof init?.body === 'string' ? init.body : '';
+    if (raw.includes(secret)) fail('多轮请求体含密钥');
+    try {
+      const body = JSON.parse(raw) as { messages?: { role?: string; content?: string }[] };
+      followSystem = body.messages?.find(message => message.role === 'system')?.content ?? '';
+    } catch {
+      followSystem = '';
+    }
+    return new Response(JSON.stringify({
+      choices: [{ message: { content: longBody } }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }) as typeof fetch;
+
+  const turns: { role: 'user' | 'assistant'; content: string }[] = [];
+  const ask = async (text: string) => {
+    turns.push({ role: 'user', content: text });
+    const res = await readJson(await post({ school: 'bazi', messages: turns, context: followContext }));
+    return res;
+  };
+
+  const round1 = await ask('这步大运宜守还是宜动？');
+  if (round1.status !== 200 || typeof round1.json?.reply !== 'string' || round1.json.reply.length <= 800) {
+    fail(`首轮没有返回超过 800 字的回复: ${round1.status}`);
+  } else if (!String(round1.json.reply).includes(AI_DISCLAIMER) || !followSystem.includes('这是一张八字盘')) {
+    fail('首轮回复或八字上下文不对');
+  } else {
+    turns.push({ role: 'assistant', content: String(round1.json.reply) });
+    ok(`首轮成功，回复 ${String(round1.json.reply).length} 字`);
+  }
+
+  const round2 = await ask('可以');
+  if (round2.json?.error === AI_ERRORS.badRequest || round2.status !== 200) {
+    fail(`快捷按钮「可以」仍被拒绝: ${round2.status} ${round2.json?.error ?? ''}`);
+  } else if (!followSystem.includes('这是一张八字盘') || followSystem.includes('不要写成星曜名词词典')) {
+    fail('第二轮快捷追问串到了紫微提示');
+  } else {
+    turns.push({ role: 'assistant', content: String(round2.json?.reply) });
+    ok('第二轮快捷按钮不再格式错误，且仍是八字');
+  }
+
+  const round3 = await ask('按这个往细说');
+  if (round3.json?.error === AI_ERRORS.badRequest || round3.status !== 200) {
+    fail(`手输第二句仍被拒绝: ${round3.status} ${round3.json?.error ?? ''}`);
+  } else {
+    turns.push({ role: 'assistant', content: String(round3.json?.reply) });
+    ok('第二轮手输不再格式错误');
+  }
+
+  const round4 = await ask('为什么之前会格式不对');
+  if (round4.json?.error === AI_ERRORS.badRequest || round4.status !== 200) {
+    fail(`第三轮仍被拒绝: ${round4.status} ${round4.json?.error ?? ''}`);
+  } else if (!followSystem.includes(followChart.pillars[0].ganZhi)) {
+    fail('第三轮请求丢掉了四柱');
+  } else ok('第三轮仍成功，school 仍是八字');
+
+  const tooLongUser = await readJson(await post({
+    school: 'bazi',
+    messages: [{ role: 'user', content: '问'.repeat(CHAT_TURN_LIMITS.user + 1) }],
+    context: followContext,
+  }));
+  if (tooLongUser.json?.error !== AI_ERRORS.badRequest) fail('超长用户输入没有被拒绝');
+  else ok('超过 800 字的用户输入仍会拒绝');
 }
 
 globalThis.fetch = originalFetch;

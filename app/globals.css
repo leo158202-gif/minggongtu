@@ -349,6 +349,21 @@ body {
   font-size: 12px;
   line-height: 1.6;
 }
+.insight-ai-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+.insight-ai-quick button {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border);
+  background: var(--t-bg);
+  color: var(--t-text);
+  font-size: 12px;
+  cursor: pointer;
+}
 .insight-ai-form {
   display: flex;
   gap: 8px;

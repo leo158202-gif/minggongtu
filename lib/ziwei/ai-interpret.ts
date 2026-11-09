@@ -10,6 +10,13 @@ export const DEEPSEEK_CHAT_COMPLETIONS_URL = 'https://api.deepseek.com/chat/comp
 export const DEEPSEEK_MODEL = 'deepseek-chat';
 export const AI_DISCLAIMER = '仅供参考、非绝对预言';
 
+/** 用户输入保持 800 字。助手回复会原样进入下一轮，不能再用同一上限，否则第二句必被拒绝。 */
+export const CHAT_TURN_LIMITS = {
+  maxTurns: 24,
+  user: 800,
+  assistant: 4000,
+} as const;
+
 export const AI_ERRORS = {
   missingKey: '服务端未配置 AI 密钥，暂时不能回答。',
   badRequest: '请求格式不对，请重新发送。',
@@ -198,14 +205,15 @@ function parseShortList(value: unknown, maxItems: number, maxLen: number): strin
 }
 
 export function parseChatTurns(value: unknown): ChatTurn[] | null {
-  if (!Array.isArray(value) || value.length === 0 || value.length > 16) return null;
+  if (!Array.isArray(value) || value.length === 0 || value.length > CHAT_TURN_LIMITS.maxTurns) return null;
   const turns: ChatTurn[] = [];
   for (const item of value) {
     if (!isRecord(item)) return null;
     if (item.role !== 'user' && item.role !== 'assistant') return null;
     if (typeof item.content !== 'string') return null;
     const content = item.content.trim();
-    if (!content || content.length > 800) return null;
+    const limit = item.role === 'user' ? CHAT_TURN_LIMITS.user : CHAT_TURN_LIMITS.assistant;
+    if (!content || content.length > limit) return null;
     turns.push({ role: item.role, content });
   }
   if (turns[turns.length - 1]?.role !== 'user') return null;
@@ -373,7 +381,7 @@ function extractReply(data: unknown): string {
   if (!isRecord(data) || !Array.isArray(data.choices) || !isRecord(data.choices[0])) return '';
   const message = data.choices[0].message;
   if (!isRecord(message) || typeof message.content !== 'string') return '';
-  return message.content.trim().slice(0, 4000);
+  return message.content.trim().slice(0, CHAT_TURN_LIMITS.assistant);
 }
 
 function redactSecret(text: string, secret: string): string {

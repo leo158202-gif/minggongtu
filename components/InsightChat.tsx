@@ -72,8 +72,8 @@ export default function InsightChat({
       ? `${context.activeLayer}${context.selectedPalace ? ` · 点中${context.selectedPalace.name}` : ' · 未点宫'}`
       : '未起盘');
 
-  const send = async () => {
-    const question = input.trim();
+  const send = async (preset?: string) => {
+    const question = (preset ?? input).trim();
     if (!ready || !question || loading) return;
     if (school === 'bazi' ? !baziContext : !context) return;
     const nextMessages: Turn[] = [...messages, { role: 'user', content: question }];
@@ -147,6 +147,13 @@ export default function InsightChat({
       )}
 
       {error && <p className="insight-ai-error" role="alert" data-testid="insight-ai-error">{error}</p>}
+
+      {ready && !loading && messages.some(message => message.role === 'assistant') && (
+        <div className="insight-ai-quick" role="group" aria-label="快捷追问">
+          <button type="button" data-testid="insight-ai-quick-ok" onClick={() => void send('可以')}>可以</button>
+          <button type="button" data-testid="insight-ai-quick-detail" onClick={() => void send('按这个往细说')}>按这个往细说</button>
+        </div>
+      )}
 
       <form
         className="insight-ai-form"
