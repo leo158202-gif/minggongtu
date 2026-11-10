@@ -19,6 +19,10 @@ const ok = (msg: string) => console.log(`  ✓ ${msg}`);
 const birth: BirthInfo = { year: 1990, month: 8, day: 15, hour: 3, gender: 'female', name: '测试' };
 const chart = generateChart(birth);
 const picked = chart.palaces.find(palace => palace.name === '夫妻') ?? chart.palaces[0];
+const mingpan = buildAiChartContext(chart, { view: 'mingpan', liunianYear: 2026 });
+if (mingpan.currentDaXian !== null || mingpan.liunian.transforms.length > 0 || !mingpan.activeLayer.includes('本命')) {
+  fail(`本命上下文仍带着大限或流年四化：${mingpan.activeLayer}`);
+} else ok('本命上下文不附带已选大限或流年');
 const daxian = buildAiChartContext(chart, { view: 'daxian', liunianYear: 2026, selectedPalace: picked });
 const liunianPalace = chart.palaces.find(palace => palace.name === '官禄') ?? chart.palaces[1];
 const liunian = buildAiChartContext(chart, { view: 'liunian', liunianYear: 2031, selectedPalace: liunianPalace });

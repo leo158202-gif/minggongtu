@@ -14,10 +14,11 @@ interface AstroBoardProps {
   onChooseDst: (choice: AstroDstChoice) => void;
   onAcceptGap: () => void;
   onRefreshTransit: () => void;
+  onTransitOpen?: (open: boolean) => void;
 }
 
 export default function AstroBoard({
-  chart, error, prompt, place, casting, onChange, onCommit, onChooseDst, onAcceptGap, onRefreshTransit,
+  chart, error, prompt, place, casting, onChange, onCommit, onChooseDst, onAcceptGap, onRefreshTransit, onTransitOpen,
 }: AstroBoardProps) {
   return (
     <section className="bazi-board astro-board" aria-label="西洋占星" data-testid="astro-board" aria-busy={casting}>
@@ -113,7 +114,12 @@ export default function AstroBoard({
               </tbody>
             </table>
           )}
-          <h3>此刻行运</h3>
+          <details
+            className="fold-edit"
+            data-testid="astro-transits-fold"
+            onToggle={event => onTransitOpen?.(event.currentTarget.open)}
+          >
+            <summary>此刻行运</summary>
           {chart.transits ? (
             <div data-testid="astro-transits">
               <p className="astro-note">行运时刻 {chart.transits.utcText}。这是排盘当时的一张快照。</p>
@@ -136,6 +142,7 @@ export default function AstroBoard({
               )}
             </div>
           ) : <p className="astro-note">行运没有算出。</p>}
+          </details>
           {chart.warnings.map(warning => <p key={warning} className="astro-note">{warning}</p>)}
           {chart.unavailable.map(item => <p key={item} className="astro-note">{item}</p>)}
           <p className="bazi-credit">

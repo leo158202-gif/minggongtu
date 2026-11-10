@@ -34,6 +34,10 @@ interface BirthFormProps {
   trueSolar?: boolean;
   /** 时间标签。紫微和八字保持「北京时间」。 */
   clockLabel?: string;
+  /** 仅八字显示。勾选表示钟面含当年夏令时。 */
+  showDstClock?: boolean;
+  dstInClock?: boolean;
+  onDstInClock?: (checked: boolean) => void;
 }
 
 const SHICHEN_NAMES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
@@ -45,7 +49,7 @@ function isValidDate(y: number, m: number, d: number): boolean {
   return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
 }
 
-export default function BirthForm({ onSubmit, loading, initialData, onFormSave, hideSubmit, calendar = 'solar', trueSolar = true, clockLabel = '北京时间' }: BirthFormProps) {
+export default function BirthForm({ onSubmit, loading, initialData, onFormSave, hideSubmit, calendar = 'solar', trueSolar = true, clockLabel = '北京时间', showDstClock = false, dstInClock = false, onDstInClock }: BirthFormProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -395,6 +399,21 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
             )}
           </div>
         </div>
+        {showDstClock && (
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '7px', marginTop: '8px', cursor: 'pointer' }}>
+            <input
+              data-testid="bazi-dst-clock"
+              type="checkbox"
+              checked={dstInClock}
+              onChange={e => onDstInClock?.(e.target.checked)}
+              style={{ width: '16px', height: '16px', marginTop: '2px', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '13px', color: inputClr, lineHeight: 1.45 }}>
+              输入时间含夏令时
+              <span style={{ display: 'block', fontSize: '12px', color: labelClr }}>已校准为标准时间请勿勾选</span>
+            </span>
+          </label>
+        )}
         <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '8px', cursor: 'pointer' }}>
           <input
             type="checkbox"

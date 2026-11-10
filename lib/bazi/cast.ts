@@ -42,10 +42,7 @@ export function baziClockForkMinutes(input: BaziCastInput): number {
 export function castBazi(input: BaziCastInput): BaziChartView {
   const forkMinutes = baziClockForkMinutes(input);
   const fork = Math.abs(forkMinutes) >= 30;
-  if (fork && input.timeBasis !== 'standard' && input.timeBasis !== 'wall') {
-    throw new Error(BAZI_TIME_BASIS_REQUIRED);
-  }
-  const timeBasis: BaziTimeBasis = input.timeBasis ?? 'standard';
+  const timeBasis: BaziTimeBasis = input.timeBasis === 'wall' ? 'wall' : 'standard';
   let birthDate = input.birthDate;
   let birthTime = input.birthTime;
   let timeZone: string = STANDARD_ZONE;

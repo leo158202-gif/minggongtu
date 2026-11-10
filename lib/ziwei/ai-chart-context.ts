@@ -92,7 +92,7 @@ export function buildAiChartContext(chart: ZiweiChart, input: AiChartContextInpu
   return {
     view,
     viewLabel: VIEW_LABEL[view],
-    activeLayer: activeLayer(view, year, currentDaXian),
+    activeLayer: view === 'mingpan' ? '本命（未选大限或流年）' : activeLayer(view, year, currentDaXian),
     liunianYear: year,
     wuxingJuName: chart.wuxingJuName || '',
     yinYangGender: chart.yinYangGender || '',
@@ -101,8 +101,8 @@ export function buildAiChartContext(chart: ZiweiChart, input: AiChartContextInpu
     shenGongBranch: BRANCHES[chart.shenGongBranch] ?? '',
     palaces,
     natalSihua,
-    currentDaXian,
-    liunian,
+    currentDaXian: view === 'daxian' ? currentDaXian : null,
+    liunian: view === 'liunian' ? liunian : { year, stem: '', branch: '', landedPalace: null, transforms: [] },
     selectedPalace: selected,
   };
 }

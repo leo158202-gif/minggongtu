@@ -229,6 +229,10 @@ async function main() {
     fail('没有样例盘，跳不过追问');
   } else {
     const context = buildAstroAiContext(chartResult.chart);
+    const opened = buildAstroAiContext(chartResult.chart, true);
+    if (!context.transits.some(line => line.includes('未打开行运'))) fail('本命追问仍附带行运');
+    else if (!opened.transits.some(line => line.includes('行运时刻'))) fail('打开行运后没有绑定快照');
+    else ok('未打开行运时追问只写本命，打开后才绑定快照');
     const parsedRoundTrip = JSON.parse(JSON.stringify(context)) as { planets?: string[] };
     if (!context.planets.some(item => item.includes('太阳') && item.includes('双子')) || parsedRoundTrip.planets?.some(item => item.includes('Gemini'))) {
       fail('追问上下文不是中文盘面');

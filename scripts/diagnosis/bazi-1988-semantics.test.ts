@@ -1,11 +1,11 @@
 /**
  * 1988-07-21 04:15 广州诊断。不改排盘。
  * 用户已说明这组钟面是去掉夏令时后的标准北京时间（UTC+8）。
- * 现用产品路径仍把 Asia/Shanghai 的历史夏令时扣进真太阳时，这是待修行为，此文件只把它锁成观测。
+ * 不勾选时按标准北京时间。勾选才按当年原始钟面。
  * 跑: npx tsx scripts/diagnosis/bazi-1988-semantics.test.ts
  */
 import { calculateChart } from 'xuantian-bazi';
-import { BAZI_TIME_BASIS_REQUIRED, castBazi } from '../../lib/bazi/cast';
+import { castBazi } from '../../lib/bazi/cast';
 import { buildBaziAiContext, buildBaziSystemPrompt } from '../../lib/bazi/ai-context';
 
 let failures = 0;
@@ -35,17 +35,13 @@ function direct(zone: string, trueSolar: boolean, extra: { birthDate?: string; b
   });
 }
 
-let missingMessage = '';
-try {
-  castBazi({
-    gender: 'female', calendar: 'solar', birthDate: '1988-07-21', birthTime: '04:15',
-    leapMonth: false, sect: 2, trueSolar: true, longitude: GUANGZHOU_CENTER,
-  });
-} catch (error) {
-  missingMessage = error instanceof Error ? error.message : '';
-}
-if (missingMessage !== BAZI_TIME_BASIS_REQUIRED) fail(`未选择时间依据时没有停住：${missingMessage}`);
-else ok('历史夏令时没有选择时不排八字');
+const omitted = castBazi({
+  gender: 'female', calendar: 'solar', birthDate: '1988-07-21', birthTime: '04:15',
+  leapMonth: false, sect: 2, trueSolar: true, longitude: GUANGZHOU_CENTER,
+});
+if (omitted.pillars.map(item => item.ganZhi).join(' ') !== CONFIRMED || omitted.timeBasis !== 'standard') {
+  fail(`未勾选时没有按标准北京时间排：${omitted.pillars.map(item => item.ganZhi).join(' ')} ${omitted.timeBasis}`);
+} else ok('输入页不勾选时按标准北京时间排盘');
 
 const product = castBazi({
   gender: 'female',
@@ -178,6 +174,17 @@ const prompt = buildBaziSystemPrompt(buildBaziAiContext(product, 0, null));
 if (!prompt.includes(product.timeBasisLabel) || !prompt.includes(product.chartDatetime) || !prompt.includes('不要再扣夏令时')) {
   fail('追问上下文没有写明时间依据，或没有禁止再校正');
 } else ok(`追问带上时间依据和真实时刻 ${product.chartDatetime}`);
+
+const natalContext = buildBaziAiContext(product, -1, null);
+if (!natalContext.readingTarget.startsWith('八字本命') || !natalContext.selectedDecade.includes('未选') || !natalContext.selectedYear.includes('未选')) {
+  fail(`本命模式仍绑定了大运或流年：${natalContext.readingTarget}`);
+} else ok('未选运势时追问只写本命');
+const pickedYear = product.decades.find(item => item.years.length > 0)?.years[0];
+const pickedIndex = product.decades.findIndex(item => item.years.length > 0);
+const picked = pickedYear ? buildBaziAiContext(product, pickedIndex, pickedYear.year) : null;
+if (!picked || picked.selectedYear.includes('未选') || !picked.readingTarget.includes(String(pickedYear?.year))) {
+  fail('主动选择流年后上下文没有绑上');
+} else ok(`主动选择后追问绑定 ${picked.selectedYear}`);
 
 if (failures) {
   console.error(`\n${failures} 项失败`);

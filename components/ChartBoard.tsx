@@ -115,15 +115,6 @@ export default function ChartBoard({
 
   return (
     <div className="w-full select-none">
-      {/* 时间导航轴 */}
-      <TimeNav
-        chart={chart}
-        view={timeView}
-        liunianYear={liunianYear}
-        onViewChange={setTimeView}
-        onYearChange={setLiunianYear}
-      />
-
       {/* 命盘标题 */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
@@ -192,7 +183,7 @@ export default function ChartBoard({
             </div>
           </div>
 
-          {chart.currentDaXianIndex >= 0 && (() => {
+          {timeView === 'daxian' && chart.currentDaXianIndex >= 0 && (() => {
             const dx = chart.daXians[chart.currentDaXianIndex];
             return (
               <div className="border border-purple-500/30 rounded-lg px-3 py-1.5 text-center"
@@ -306,6 +297,20 @@ export default function ChartBoard({
           点击宫位看三方四正
         </span>
       </motion.div>
+
+      <details className="fold-edit" data-testid="ziwei-fortune" open={timeView !== 'mingpan' ? true : undefined}>
+        <summary>大限与流年</summary>
+        <TimeNav
+          chart={chart}
+          view={timeView}
+          liunianYear={liunianYear}
+          onViewChange={setTimeView}
+          onYearChange={setLiunianYear}
+        />
+        {timeView !== 'mingpan' && (
+          <button type="button" data-testid="ziwei-back-natal" onClick={() => setTimeView('mingpan')}>返回本命</button>
+        )}
+      </details>
     </div>
   );
 }

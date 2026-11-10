@@ -129,10 +129,16 @@ export default function InsightChat({
       {ready ? (
         <p className="insight-ai-note">
           {school === 'bazi'
-            ? '结合当前四柱、大运和流年，回答会落到建议和趋势。这段对话和紫微分开，只留在这个页面里。'
+            ? (baziContext?.selectedDecade.includes('未选')
+              ? '当前只看本命四柱。你选了大运或流年之后，回答才跟着那一步。这段对话和紫微分开。'
+              : '结合当前四柱和你选中的大运、流年，回答会落到建议和趋势。这段对话和紫微分开。')
             : school === 'astro'
-              ? '结合这张星盘的上升、行星落座和相位。回答是结构说明，不是批文。这段对话和紫微、八字分开。'
-              : '结合当前本命、大限、流年和点中的宫，回答会落到建议和趋势。对话只留在这个页面里。'}
+              ? (astroContext?.transits.some(line => line.includes('未打开行运'))
+                ? '当前只看本命星盘。打开行运之后，回答才使用那张快照。这段对话和紫微、八字分开。'
+                : '结合这张本命星盘和你打开的行运快照。回答是结构说明，不是批文。')
+              : (timeView === 'mingpan'
+                ? '当前只看本命。打开大限或流年之后，回答才跟着那一层。对话只留在这个页面里。'
+                : '结合你打开的大限或流年，以及点中的宫。回答会落到建议和趋势。')}
         </p>
       ) : (
         <p className="insight-ai-note" data-testid="insight-ai-disabled">
