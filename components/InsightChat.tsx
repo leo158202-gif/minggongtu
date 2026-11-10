@@ -1,6 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { SafeMarkdown } from './ChatMarkdown';
+import type { AstroAiContext } from '@/lib/astro/ai-context';
 import type { BaziAiContext } from '@/lib/bazi/ai-context';
 import { buildAiChartContext, type AiView } from '@/lib/ziwei/ai-chart-context';
 import { hasReadableChart } from '@/lib/ziwei/fixed-reading';
@@ -11,9 +14,11 @@ interface InsightChatProps {
   timeView?: AiView;
   liunianYear?: number;
   selectedPalace?: Palace | null;
-  school?: 'ziwei' | 'bazi';
+  school?: 'ziwei' | 'bazi' | 'astro';
   baziContext?: BaziAiContext | null;
+  astroContext?: AstroAiContext | null;
   conversationKey?: string;
+  preface?: ReactNode;
 }
 
 interface Turn {
@@ -30,11 +35,14 @@ export default function InsightChat({
   selectedPalace,
   school = 'ziwei',
   baziContext = null,
+  astroContext = null,
   conversationKey,
+  preface,
 }: InsightChatProps) {
-  const ziweiReady = school !== 'bazi' && hasReadableChart(chart);
+  const ziweiReady = school === 'ziwei' && hasReadableChart(chart);
   const baziReady = school === 'bazi' && !!baziContext;
-  const ready = ziweiReady || baziReady;
+  const astroReady = school === 'astro' && !!astroContext;
+  const ready = ziweiReady || baziReady || astroReady;
   const birthKey = ziweiReady
     ? [chart.birthInfo.year, chart.birthInfo.month, chart.birthInfo.day, chart.birthInfo.hour, chart.birthInfo.gender, chart.birthInfo.name ?? ''].join('|')
     : '';
@@ -49,6 +57,8 @@ export default function InsightChat({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
+  const stickRef = useRef(false);
+  const seenMessages = useRef(0);
   const sessionRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -62,20 +72,47 @@ export default function InsightChat({
   }, [sessionKey]);
 
   useEffect(() => {
+    const onScroll = () => {
+      const el = logRef.current;
+      if (!el || el.getClientRects().length === 0) return;
+      stickRef.current = logFollowsBottom(el);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
     const el = logRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    el?.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      el?.removeEventListener('scroll', onScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = logRef.current;
+    const appended = messages.length > seenMessages.current;
+    seenMessages.current = messages.length;
+    if (!el || el.getClientRects().length === 0 || !stickRef.current) return;
+    if (!appended && !loading) return;
+    if (logScrollsItself(el)) {
+      el.scrollTop = el.scrollHeight;
+      return;
+    }
+    const target = window.scrollY + el.getBoundingClientRect().bottom - window.innerHeight + 24;
+    if (target > window.scrollY + 8) window.scrollTo({ top: target, behavior: 'instant' });
   }, [messages, loading]);
 
   const contextLabel = school === 'bazi'
     ? (baziContext?.readingTarget ?? '未起盘')
-    : (context
-      ? `${context.activeLayer}${context.selectedPalace ? ` · 点中${context.selectedPalace.name}` : ' · 未点宫'}`
-      : '未起盘');
+    : school === 'astro'
+      ? (astroContext?.readingTarget ?? '未起盘')
+      : (context
+        ? `${context.activeLayer}${context.selectedPalace ? ` · 点中${context.selectedPalace.name}` : ' · 未点宫'}`
+        : '未起盘');
 
   const send = async (preset?: string) => {
     const question = (preset ?? input).trim();
     if (!ready || !question || loading) return;
-    if (school === 'bazi' ? !baziContext : !context) return;
+    stickRef.current = true;
+    if (school === 'bazi' ? !baziContext : school === 'astro' ? !astroContext : !context) return;
     const nextMessages: Turn[] = [...messages, { role: 'user', content: question }];
     const seq = sessionRef.current;
     abortRef.current?.abort();
@@ -92,7 +129,9 @@ export default function InsightChat({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(school === 'bazi'
           ? { school: 'bazi', messages: nextMessages, context: baziContext }
-          : { school: 'ziwei', messages: nextMessages, context }),
+          : school === 'astro'
+            ? { school: 'astro', messages: nextMessages, context: astroContext }
+            : { school: 'ziwei', messages: nextMessages, context }),
         signal: controller.signal,
       });
       const data = await res.json().catch(() => null);
@@ -121,8 +160,16 @@ export default function InsightChat({
       {ready ? (
         <p className="insight-ai-note">
           {school === 'bazi'
-            ? '结合当前四柱、大运和流年，回答会落到建议和趋势。这段对话和紫微分开，只留在这个页面里。'
-            : '结合当前本命、大限、流年和点中的宫，回答会落到建议和趋势。对话只留在这个页面里。'}
+            ? (baziContext?.selectedDecade.includes('未选')
+              ? '当前只看本命四柱。你选了大运或流年之后，回答才跟着那一步。这段对话和紫微分开。'
+              : '结合当前四柱和你选中的大运、流年，回答会落到建议和趋势。这段对话和紫微分开。')
+            : school === 'astro'
+              ? (astroContext?.transits.some(line => line.includes('未打开行运'))
+                ? '当前只看本命星盘。打开行运之后，回答才使用那张快照。这段对话和紫微、八字分开。'
+                : '结合这张本命星盘和你打开的行运快照。回答是结构说明，不是批文。')
+              : (timeView === 'mingpan'
+                ? '当前只看本命。打开大限或流年之后，回答才跟着那一层。对话只留在这个页面里。'
+                : '结合你打开的大限或流年，以及点中的宫。回答会落到建议和趋势。')}
         </p>
       ) : (
         <p className="insight-ai-note" data-testid="insight-ai-disabled">
@@ -131,22 +178,35 @@ export default function InsightChat({
       )}
       <p className="insight-ai-context" data-testid="insight-ai-context">{contextLabel}</p>
 
-      {(messages.length > 0 || loading) && (
-        <div ref={logRef} className="insight-ai-log" aria-live="polite">
-          {messages.map((message, index) => (
-            <p
-              key={`${message.role}-${index}`}
-              className={message.role === 'user' ? 'insight-ai-msg is-user' : 'insight-ai-msg is-assistant'}
-              data-testid={message.role === 'assistant' ? 'insight-ai-reply' : undefined}
-            >
-              {message.content}
-            </p>
-          ))}
-          {loading && <p className="insight-ai-msg is-assistant">正在想…</p>}
-        </div>
-      )}
+      <div
+        ref={logRef}
+        className="insight-ai-log"
+        aria-live="polite"
+        data-testid="insight-ai-log"
+        onScroll={event => {
+          const el = event.currentTarget;
+          stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 64;
+        }}
+      >
+        {preface}
+        {messages.map((message, index) => (
+          <div
+            key={`${message.role}-${index}`}
+            className={message.role === 'user' ? 'insight-ai-msg is-user' : 'insight-ai-msg is-assistant'}
+            data-testid={message.role === 'assistant' ? 'insight-ai-reply' : 'insight-ai-user'}
+          >
+            <SafeMarkdown text={message.content} />
+          </div>
+        ))}
+        {loading && <p className="insight-ai-msg is-assistant">正在想…</p>}
+      </div>
 
-      {error && <p className="insight-ai-error" role="alert" data-testid="insight-ai-error">{error}</p>}
+      {error && (
+        <p className="insight-ai-error" role="alert" data-testid="insight-ai-error">
+          {error}
+          {error.includes('设置') && <> <Link href="/settings">打开设置页</Link></>}
+        </p>
+      )}
 
       {ready && !loading && messages.some(message => message.role === 'assistant') && (
         <div className="insight-ai-quick" role="group" aria-label="快捷追问">
@@ -170,7 +230,7 @@ export default function InsightChat({
           maxLength={800}
           rows={3}
           disabled={!ready || loading}
-          placeholder={ready ? (school === 'bazi' ? '例如：这一步大运，工作上宜守还是宜动？' : '例如：这一步大限，事业上宜进还是宜守？') : '请先起盘'}
+          placeholder={ready ? (school === 'bazi' ? '例如：这一步大运，工作上宜守还是宜动？' : school === 'astro' ? '例如：上升和太阳的配置，工作上宜怎么看？' : '例如：这一步大限，事业上宜进还是宜守？') : '请先起盘'}
           onChange={event => setInput(event.target.value)}
           onKeyDown={event => {
             if (event.key === 'Enter' && !event.shiftKey) {
@@ -185,6 +245,16 @@ export default function InsightChat({
       </form>
     </section>
   );
+}
+
+export function logScrollsItself(el: HTMLElement): boolean {
+  const overflow = getComputedStyle(el).overflowY;
+  return el.scrollHeight > el.clientHeight + 8 && overflow !== 'visible';
+}
+
+export function logFollowsBottom(el: HTMLElement): boolean {
+  if (logScrollsItself(el)) return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  return document.documentElement.scrollHeight - window.scrollY - window.innerHeight < 80;
 }
 
 function safeErrorMessage(value: unknown): string {

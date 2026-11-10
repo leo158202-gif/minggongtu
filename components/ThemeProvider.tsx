@@ -6,36 +6,30 @@ export type Theme = 'dark' | 'light';
 const ThemeContext = createContext<{
   theme: Theme;
   toggle: () => void;
-}>({ theme: 'dark', toggle: () => {} });
+}>({ theme: 'light', toggle: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // 首屏固定暗色，和服务端 HTML 一致，避免读 localStorage 造成 hydration 对不上、表单点了没反应。
-  const [theme, setTheme] = useState<Theme>('dark');
-  const [mounted, setMounted] = useState(false);
+  // 无已保存选择时用亮色。不读系统暗色。只在用户手动切换时写入本地。
+  const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
     const saved = localStorage.getItem('ziwei-theme');
-    const attr = document.documentElement.getAttribute('data-theme');
-    const next: Theme = saved === 'light' || saved === 'dark'
-      ? saved
-      : attr === 'light' || attr === 'dark'
-        ? attr
-        : 'dark';
-    setTheme(next);
-    setMounted(true);
+    if (saved === 'light' || saved === 'dark') setTheme(saved);
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
-    const root = document.documentElement;
-    root.setAttribute('data-theme', theme);
-    localStorage.setItem('ziwei-theme', theme);
-  }, [theme, mounted]);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const toggle = () => {
     const root = document.documentElement;
     root.classList.add('theme-transitioning');
-    setTheme(t => t === 'dark' ? 'light' : 'dark');
+    setTheme(current => {
+      const next: Theme = current === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('ziwei-theme', next);
+      root.setAttribute('data-theme', next);
+      return next;
+    });
     setTimeout(() => root.classList.remove('theme-transitioning'), 420);
   };
 

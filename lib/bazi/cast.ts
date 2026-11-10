@@ -1,9 +1,12 @@
 /**
- * 八字只调用 xuantian-bazi@0.2.0 一次。
- * 传入的 birthTime 必须是用户填写的钟面时间。真太阳时、夏令时由库内部做，这里不再预平移。
+ * 八字把钟面交给 xuantian-bazi@0.2.0 一次。
+ * 标准北京时间用固定 UTC+8，避免 Asia/Shanghai 再扣历史夏令时。
+ * 原始钟面在真太阳时打开时才把 Asia/Shanghai 交给库，由库扣一次历史夏令时并做真太阳时。
+ * 原始钟面但真太阳时关闭时，只按两种时区的时刻差预扣一次，之后用固定 UTC+8，不再开真太阳时。
  * 版权与许可证见 ./NOTICE.md。
  */
 import { calculateChart, ChartEngineError, getEngineInfo, type ChartResult } from 'xuantian-bazi';
+import { buildJudgement } from './judgement';
 import type {
   BaziCastInput,
   BaziChartView,
@@ -11,24 +14,64 @@ import type {
   BaziElementView,
   BaziHiddenStem,
   BaziPillarView,
+  BaziTimeBasis,
   BaziYearView,
 } from './types';
 
 const PILLAR_TYPES = ['year', 'month', 'day', 'hour'] as const;
+const STANDARD_ZONE = 'Etc/GMT-8';
+const WALL_ZONE = 'Asia/Shanghai';
+
+export const BAZI_TIME_BASIS_REQUIRED = '这个钟面落在中国历史夏令时里，两种理解会差 60 分钟。请选择时间依据后再排八字。';
+
+export const BAZI_TIME_BASIS_LABEL: Record<BaziTimeBasis, string> = {
+  standard: '已经校准的标准北京时间 UTC+8',
+  wall: '当年的原始钟面（按历史夏令时）',
+};
+
+export function baziClockForkMinutes(input: BaziCastInput): number {
+  try {
+    const longitude = input.longitude ?? 120;
+    const standard = chartStamp(input, STANDARD_ZONE, input.birthDate, input.birthTime, longitude);
+    const wall = chartStamp(input, WALL_ZONE, input.birthDate, input.birthTime, longitude);
+    return Math.round((Date.parse(wall) - Date.parse(standard)) / 60_000);
+  } catch {
+    return 0;
+  }
+}
 
 export function castBazi(input: BaziCastInput): BaziChartView {
-  const longitude = input.trueSolar ? (input.longitude ?? 120) : undefined;
+  const forkMinutes = baziClockForkMinutes(input);
+  const fork = Math.abs(forkMinutes) >= 30;
+  const timeBasis: BaziTimeBasis = input.timeBasis === 'wall' ? 'wall' : 'standard';
+  let birthDate = input.birthDate;
+  let birthTime = input.birthTime;
+  let timeZone: string = STANDARD_ZONE;
+  let trueSolarTime = input.trueSolar;
+  let presetDstMinutes: number | null = null;
+  if (fork && timeBasis === 'wall') {
+    if (input.trueSolar) {
+      timeZone = WALL_ZONE;
+    } else {
+      const shifted = addClockMinutes(input.birthDate, input.birthTime, forkMinutes);
+      birthDate = shifted.birthDate;
+      birthTime = shifted.birthTime;
+      presetDstMinutes = forkMinutes;
+      trueSolarTime = false;
+    }
+  }
+  const longitude = trueSolarTime ? (input.longitude ?? 120) : undefined;
   let result: ChartResult;
   try {
     result = calculateChart({
       gender: input.gender,
       calendar: input.calendar,
-      birthDate: input.birthDate,
-      birthTime: input.birthTime,
+      birthDate,
+      birthTime,
       leapMonth: input.calendar === 'lunar' ? input.leapMonth : false,
       sect: input.sect,
-      trueSolarTime: input.trueSolar,
-      timeZone: 'Asia/Shanghai',
+      trueSolarTime,
+      timeZone,
       longitude,
       locale: 'zh-CN',
     });
@@ -42,15 +85,51 @@ export function castBazi(input: BaziCastInput): BaziChartView {
   const engine = getEngineInfo();
   return toView(result, input, {
     version: engine.version,
-    assumedMeridian120: input.trueSolar && input.longitude === undefined,
+    assumedMeridian120: trueSolarTime && input.longitude === undefined,
     longitude: longitude ?? null,
+    timeBasis,
+    fork,
+    presetDstMinutes,
   });
+}
+
+function chartStamp(input: BaziCastInput, timeZone: string, birthDate: string, birthTime: string, longitude: number): string {
+  return calculateChart({
+    gender: input.gender,
+    calendar: input.calendar,
+    birthDate,
+    birthTime,
+    leapMonth: input.calendar === 'lunar' ? input.leapMonth : false,
+    sect: input.sect,
+    trueSolarTime: true,
+    timeZone,
+    longitude,
+    locale: 'zh-CN',
+  }).chartDateTime;
+}
+
+function addClockMinutes(birthDate: string, birthTime: string, minutes: number): { birthDate: string; birthTime: string } {
+  const [year, month, day] = birthDate.split('-').map(Number);
+  const [hour, minute] = birthTime.split(':').map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day, hour, minute) + minutes * 60_000);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return {
+    birthDate: `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`,
+    birthTime: `${pad(next.getUTCHours())}:${pad(next.getUTCMinutes())}`,
+  };
 }
 
 function toView(
   result: ChartResult,
   input: BaziCastInput,
-  meta: { version: string; assumedMeridian120: boolean; longitude: number | null },
+  meta: {
+    version: string;
+    assumedMeridian120: boolean;
+    longitude: number | null;
+    timeBasis: BaziTimeBasis;
+    fork: boolean;
+    presetDstMinutes: number | null;
+  },
 ): BaziChartView {
   const chart = record(result.normalizedChart);
   const pillars = asArray(chart.pillars).map(readPillar).filter((item): item is BaziPillarView => !!item);
@@ -63,6 +142,30 @@ function toView(
   const dayMaster = text(chart.day_master);
   const dayMasterElement = text(chart.day_master_element);
   if (!dayMaster || !dayMasterElement) throw new Error('八字库没有返回日主。');
+  const fiveElements = asArray(chart.five_elements_summary).map(readElement).filter((item): item is BaziElementView => !!item);
+  const analysis = record(chart.day_master_analysis);
+  const season = record(analysis.season);
+  const root = record(analysis.root);
+  const support = record(analysis.support);
+  const overall = record(analysis.overall);
+  const usefulSummary = record(chart.useful_element_summary);
+  const judgement = buildJudgement({
+    dayMaster,
+    element: dayMasterElement,
+    label: text(overall.label),
+    season: text(season.status),
+    root: text(root.status),
+    support: text(support.status),
+    seasonNote: text(season.description),
+    rootNote: text(root.description),
+    supportNote: text(support.description),
+    useful: stringList(chart.useful_elements),
+    unfavorable: stringList(chart.unfavorable_elements),
+    usefulNote: text(usefulSummary.description),
+    caution: text(usefulSummary.caution),
+    pattern: text(chart.pattern),
+    scores: fiveElements,
+  });
 
   return {
     engineName: 'xuantian-bazi',
@@ -82,15 +185,19 @@ function toView(
     dayMasterElement,
     zodiac: text(chart.zodiac),
     pillars,
-    fiveElements: asArray(chart.five_elements_summary).map(readElement).filter((item): item is BaziElementView => !!item),
+    fiveElements,
+    judgement,
     decades: asArray(chart.decade_cycles).map(readDecade).filter((item): item is BaziDecadeView => !!item),
     startYun: text(chart.start_yun_desc),
-    dstApplied: corrections.dst_applied === true || dst.dstApplied === true,
-    dstMinutes: numberOrNull(dst.dstMinutes ?? corrections.dst_minutes),
+    dstApplied: meta.presetDstMinutes !== null || corrections.dst_applied === true || dst.dstApplied === true,
+    dstMinutes: meta.presetDstMinutes ?? numberOrNull(dst.dstMinutes ?? corrections.dst_minutes),
     trueSolarMinutes: numberOrNull(trueSolar.correctionMinutes ?? corrections.true_solar_correction_minutes),
     trueSolarSource: text(trueSolar.source || corrections.true_solar_source),
     sectLabel: input.sect === 1 ? '23:00 起日柱算次日' : '23:00–23:59 日柱仍算当天',
     calendarLabel: input.calendar === 'lunar' ? (input.leapMonth ? '农历闰月' : '农历') : '公历',
+    timeBasis: meta.timeBasis,
+    timeBasisLabel: BAZI_TIME_BASIS_LABEL[meta.timeBasis],
+    timeFork: meta.fork,
   };
 }
 
@@ -168,6 +275,10 @@ function publicBaziError(message: string): string {
     .replace('农历 birth_date 日期超出该月实际天数', '这个农历日期不存在')
     .replace('农历 birth_date 的月份或日期无效', '农历月份或日期无效')
     .replace('is_leap_month 仅适用于农历日期', '闰月只用于农历');
+}
+
+function stringList(value: unknown): string[] {
+  return asArray(value).map(text).filter(Boolean);
 }
 
 function record(value: unknown): Record<string, unknown> {

@@ -2,6 +2,7 @@
  * 命盘 AI 追问的服务端组装。
  * 密钥只从环境变量读取，不进入提示词、响应或日志。
  */
+import { buildAstroSystemPrompt, type AstroAiContext } from '../astro/ai-context';
 import { buildBaziSystemPrompt, type BaziAiContext } from '../bazi/ai-context';
 import type { SiHua } from './types';
 import type { AiChartContext, AiStarFact, AiTransformFact, AiView } from './ai-chart-context';
@@ -18,10 +19,11 @@ export const CHAT_TURN_LIMITS = {
 } as const;
 
 export const AI_ERRORS = {
-  missingKey: '服务端未配置 AI 密钥，暂时不能回答。',
+  missingKey: '还没有 AI 密钥。请打开设置页填写，填好后再来追问。',
   badRequest: '请求格式不对，请重新发送。',
   needChart: '请先起盘后再提问。',
   needBazi: '请先排好八字盘后再提问。',
+  needAstro: '请先排好星盘后再提问。',
   upstream: '解读服务暂时连不上，请稍后再试。',
   busy: '解读服务正忙，请稍后再试。',
   emptyReply: '解读没有返回内容，请再试一次。',
@@ -42,8 +44,8 @@ export interface ChatTurn {
 }
 
 interface PreparedInterpret {
-  school: 'ziwei' | 'bazi';
-  context: AiChartContext | BaziAiContext;
+  school: 'ziwei' | 'bazi' | 'astro';
+  context: AiChartContext | BaziAiContext | AstroAiContext;
   turns: ChatTurn[];
 }
 
@@ -58,7 +60,7 @@ export function buildSystemPrompt(context: AiChartContext): string {
   return [
     '你是命宫图里的紫微斗数对话助手。用户正在看一张已经排好的盘。',
     '下面 JSON 是这一次提问时的盘面：本命十二宫的主星、亮度、生年四化，当前大限，所选流年，以及用户点中的宫。',
-    'activeLayer 是用户此刻打开的层。若它和更早的对话不一致，以这一份 JSON 为准。',
+    'activeLayer 是用户此刻打开的层。若它写着本命，不要用大限或流年四化当作正在看的运势。若它和更早的对话不一致，以这一份 JSON 为准。',
     '回答要落到这个人可以怎么做、这段时间宜进还是宜守，用具体建议和趋势用语。',
     '不要写成星曜名词词典，不要逐条解释庙、旺、得、利、平、陷的定义，也不要把十二宫职能表背一遍。',
     '只使用 JSON 里出现的宫名、主星、亮度和四化，不要编造盘上没有的星。',
@@ -71,13 +73,15 @@ export function buildSystemPrompt(context: AiChartContext): string {
 }
 
 export function buildDeepSeekMessages(
-  context: AiChartContext | BaziAiContext,
+  context: AiChartContext | BaziAiContext | AstroAiContext,
   turns: ChatTurn[],
-  school: 'ziwei' | 'bazi' = 'ziwei',
+  school: 'ziwei' | 'bazi' | 'astro' = 'ziwei',
 ): { role: string; content: string }[] {
   const content = school === 'bazi'
     ? buildBaziSystemPrompt(context as BaziAiContext)
-    : buildSystemPrompt(context as AiChartContext);
+    : school === 'astro'
+      ? buildAstroSystemPrompt(context as AstroAiContext)
+      : buildSystemPrompt(context as AiChartContext);
   return [
     { role: 'system', content },
     ...turns.map(turn => ({ role: turn.role, content: turn.content })),
@@ -91,7 +95,9 @@ export function ensureFirstDisclaimer(reply: string, turns: ChatTurn[]): string 
 }
 
 export async function completeInterpret(request: Request, fetchImpl: typeof fetch = fetch): Promise<Response> {
-  const apiKey = readAiApiKey();
+  const { resolveAiConnection } = await import('./ai-settings');
+  const connection = await resolveAiConnection();
+  const apiKey = connection.apiKey;
   if (!apiKey) return jsonError(AI_ERRORS.missingKey, 503);
 
   let payload: unknown;
@@ -107,14 +113,14 @@ export async function completeInterpret(request: Request, fetchImpl: typeof fetc
   const messages = buildDeepSeekMessages(prepared.context, prepared.turns, prepared.school);
   let upstream: Response;
   try {
-    upstream = await fetchImpl(DEEPSEEK_CHAT_COMPLETIONS_URL, {
+    upstream = await fetchImpl(connection.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
+        model: connection.model,
         messages,
         temperature: 0.6,
         stream: false,
@@ -150,6 +156,11 @@ function prepareInterpret(payload: unknown): PreparedInterpret | { error: string
     if (!context) return { error: AI_ERRORS.needBazi, status: 400 };
     return { school: 'bazi', context, turns };
   }
+  if (payload.school === 'astro') {
+    const context = parseAstroAiContext(payload.context);
+    if (!context) return { error: AI_ERRORS.needAstro, status: 400 };
+    return { school: 'astro', context, turns };
+  }
   const context = parseAiChartContext(payload.context);
   if (!context) return { error: AI_ERRORS.needChart, status: 400 };
   return { school: 'ziwei', context, turns };
@@ -166,7 +177,8 @@ export function parseBaziAiContext(value: unknown): BaziAiContext | null {
     calendarLabel: shortText(value.calendarLabel, 20) ?? '',
     sectLabel: shortText(value.sectLabel, 40) ?? '',
     trueSolar: value.trueSolar === true,
-    correction: shortText(value.correction, 240) ?? '',
+    timeBasisLabel: shortText(value.timeBasisLabel, 80) ?? '',
+    correction: shortText(value.correction, 360) ?? '',
     dayMaster: shortText(value.dayMaster, 2) ?? '',
     dayMasterElement: shortText(value.dayMasterElement, 2) ?? '',
     pillars,
@@ -177,6 +189,69 @@ export function parseBaziAiContext(value: unknown): BaziAiContext | null {
   };
   if (JSON.stringify(context).length > 12_000) return null;
   return context;
+}
+
+export function parseAstroAiContext(value: unknown): AstroAiContext | null {
+  if (!isRecord(value) || value.school !== 'astro') return null;
+  const readingTarget = shortText(value.readingTarget, 180);
+  const ascendant = shortText(value.ascendant, 40);
+  const planets = parseBoundedStrings(value.planets, 16, 80);
+  const cusps = parseBoundedStrings(value.cusps, 12, 40);
+  const aspects = parseBoundedStrings(value.aspects, 48, 80);
+  const transits = parseBoundedStrings(value.transits, 48, 160);
+  const warnings = parseBoundedStrings(value.warnings, 8, 240);
+  const timeNote = requiredText(value.timeNote, 500);
+  const calendarNote = requiredText(value.calendarNote, 200);
+  const placeText = requiredText(value.placeText, 120);
+  const houseSystem = requiredText(value.houseSystem, 80);
+  const polarFallback = requiredText(value.polarFallback, 80);
+  const midheaven = requiredText(value.midheaven, 40);
+  const descendant = requiredText(value.descendant, 40);
+  const imumCoeli = requiredText(value.imumCoeli, 40);
+  const limits = requiredText(value.limits, 400);
+  if (!readingTarget || !ascendant || !planets || planets.length < 2 || !cusps || cusps.length !== 12 || !aspects || !transits || !warnings) {
+    return null;
+  }
+  if (timeNote === null || calendarNote === null || placeText === null || houseSystem === null || polarFallback === null || midheaven === null || descendant === null || imumCoeli === null || limits === null) {
+    return null;
+  }
+  const context: AstroAiContext = {
+    school: 'astro',
+    readingTarget,
+    timeNote,
+    calendarNote,
+    placeText,
+    houseSystem,
+    polarFallback,
+    ascendant,
+    midheaven,
+    descendant,
+    imumCoeli,
+    planets,
+    cusps,
+    aspects,
+    transits,
+    warnings,
+    limits,
+  };
+  if (JSON.stringify(context).length > 16_000) return null;
+  return context;
+}
+
+function requiredText(value: unknown, max: number): string | null {
+  if (value == null || value === '') return '';
+  return shortText(value, max);
+}
+
+function parseBoundedStrings(value: unknown, maxItems: number, maxLen: number): string[] | null {
+  if (!Array.isArray(value) || value.length > maxItems) return null;
+  const items: string[] = [];
+  for (const item of value) {
+    const text = shortText(item, maxLen);
+    if (!text) return null;
+    items.push(text);
+  }
+  return items;
 }
 
 function parseBaziPillars(value: unknown): BaziAiContext['pillars'] | null {

@@ -47,6 +47,7 @@ function xuantianPillars(birthDate: string, birthTime: string, sect: 1 | 2): str
     leapMonth: false,
     sect,
     trueSolar: false,
+    timeBasis: 'standard',
   });
   return chart.pillars.map(item => item.ganZhi).join(' ');
 }
@@ -82,7 +83,7 @@ else ok(`常规四柱对照 lunar-javascript：${base}`);
 
 const sample = castBazi({
   gender: 'female', calendar: 'solar', birthDate: '1990-08-15', birthTime: '08:00',
-  leapMonth: false, sect: 2, trueSolar: false,
+  leapMonth: false, sect: 2, trueSolar: false, timeBasis: 'standard',
 });
 const yearPillar = sample.pillars[0];
 if (!yearPillar.tianGan || !yearPillar.diZhi || !yearPillar.naYin || !yearPillar.wuXing || !yearPillar.mainStar || yearPillar.cangGanDetail.length === 0) {
@@ -179,11 +180,16 @@ const winterOffset = zoneOffsetMinutes('Asia/Shanghai', new Date('1988-01-15T01:
 const summerOffset = zoneOffsetMinutes('Asia/Shanghai', new Date('1988-07-14T17:30:00Z'));
 const dst = castBazi({
   gender: 'male', calendar: 'solar', birthDate: '1988-07-15', birthTime: '01:30',
-  leapMonth: false, sect: 2, trueSolar: true, longitude: 120,
+  leapMonth: false, sect: 2, trueSolar: true, longitude: 120, timeBasis: 'wall',
+});
+const standardSummer = castBazi({
+  gender: 'male', calendar: 'solar', birthDate: '1988-07-15', birthTime: '01:30',
+  leapMonth: false, sect: 2, trueSolar: true, longitude: 120, timeBasis: 'standard',
 });
 if (summerOffset - winterOffset !== 60) fail(`IANA 没有把 1988 夏令时记成多 60 分钟：冬 ${winterOffset} 夏 ${summerOffset}`);
-else if (!dst.dstApplied || dst.chartDatetime.startsWith('1988-07-15T01:30')) fail(`八字库没有按夏令时改排盘时刻：${dst.chartDatetime}`);
-else ok(`1988 夏令时：IANA 差 ${summerOffset - winterOffset} 分钟，排盘时刻 ${dst.chartDatetime}`);
+else if (!dst.dstApplied || dst.chartDatetime.startsWith('1988-07-15T01:30')) fail(`原始钟面没有按夏令时改排盘时刻：${dst.chartDatetime}`);
+else if (standardSummer.dstApplied || standardSummer.chartDatetime === dst.chartDatetime) fail(`标准北京时间仍扣了夏令时：${standardSummer.chartDatetime}`);
+else ok(`1988 夏令时：原始钟面 ${dst.chartDatetime}；标准北京时间 ${standardSummer.chartDatetime}`);
 
 const shifted = castBazi({
   gender: 'male', calendar: 'solar', birthDate: '2000-01-15', birthTime: '00:20',
@@ -207,9 +213,16 @@ else if (shifted.chartDatetime !== direct.chartDateTime) fail('封装和库的�
 else if (shifted.chartDatetime === doubled.chartDateTime) fail('预先平移后再打开真太阳时，结果却和一次校正相同');
 else ok(`真太阳时只校正一次：${unshifted.chartDatetime} → ${shifted.chartDatetime}`);
 
+const board = readFileSync('components/BaziBoard.tsx', 'utf8');
+if (/空亡|地势|自坐|父母|祖辈/.test(board) || board.includes('calculateChart')) {
+  fail('八字页写入了库没有返回的栏，或在界面里重新排盘');
+} else if (!board.includes('天干') || !board.includes('地支') || !board.includes('藏干') || !board.includes('bazi-sheet')) {
+  fail('四柱表没有按行对齐天干、地支和藏干');
+} else ok('四柱表只排已有字段，不另算空亡、地势或自坐');
+
 console.log('  · 未做界面：流月、流日。库能算，但本版没有单独验证后的选择器。');
 console.log('  · 未覆盖：出生地纬度、Asia/Shanghai 以外的时区。表单没有这些字段，调用时不编造。');
-console.log('  · 紫微真太阳时仍是经度差，八字真太阳时是库内的均时差和夏令时。测试不断言两套时辰相同。');
+console.log('  · 紫微真太阳时仍是经度差，不自动扣夏令时。八字只有选择原始钟面时才扣历史夏令时。');
 
 if (failures) {
   console.error(`\n${failures} 项失败`);

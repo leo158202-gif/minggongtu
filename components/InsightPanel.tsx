@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { AstroAiContext } from '@/lib/astro/ai-context';
 import type { BaziAiContext } from '@/lib/bazi/ai-context';
 import type { Palace, ZiweiChart } from '@/lib/ziwei/types';
 import type { TimeView } from './TimeNav';
@@ -17,8 +18,9 @@ interface InsightPanelProps {
   selectedPalace?: Palace | null;
   timeView?: TimeView;
   liunianYear?: number;
-  school?: 'ziwei' | 'bazi';
+  school?: 'ziwei' | 'bazi' | 'astro';
   baziContext?: BaziAiContext | null;
+  astroContext?: AstroAiContext | null;
   conversationKey?: string;
 }
 
@@ -29,6 +31,7 @@ export default function InsightPanel({
   liunianYear = new Date().getFullYear(),
   school = 'ziwei',
   baziContext = null,
+  astroContext = null,
   conversationKey,
 }: InsightPanelProps) {
   const [questionId, setQuestionId] = useState<string | null>(null);
@@ -40,7 +43,7 @@ export default function InsightPanel({
   }), [timeView, liunianYear, selectedPalace]);
 
   const reading = useMemo(() => (
-    school !== 'bazi' && hasReadableChart(chart) ? buildChartReading(chart, ctx) : null
+    school === 'ziwei' && hasReadableChart(chart) ? buildChartReading(chart, ctx) : null
   ), [chart, ctx, school]);
 
   const answer = useMemo(() => {
@@ -59,15 +62,22 @@ export default function InsightPanel({
     return () => cancelAnimationFrame(frame);
   }, [questionId]);
 
-  return (
-    <aside className={(reading || baziContext) ? 'insight-panel is-ready' : 'insight-panel'} aria-label="解读" data-testid="insight-panel">
-      <header className="insight-panel-head">
-        <h2>解读</h2>
-        <p className="insight-kicker">{school === 'bazi' ? '当前解读的是八字盘' : '上面是固定说明，下面可以继续问'}</p>
-      </header>
-
-      <div className="insight-scroll">
-      {school === 'bazi' ? (
+  const preface = (
+    <details className="insight-fold" data-testid="insight-summary">
+      <summary>{school === 'bazi' ? (baziContext?.readingTarget ?? '还没有八字盘') : school === 'astro' ? (astroContext?.readingTarget ?? '还没有星盘') : (reading?.layerLabel ?? '还没有命盘')}</summary>
+      {school === 'astro' ? (
+        <div className="insight-block" data-testid="astro-insight">
+          <h3>正在看的盘</h3>
+          <p>{astroContext?.readingTarget ?? '还没有星盘。'}</p>
+          {astroContext && (
+            <>
+              <p>{astroContext.timeNote}</p>
+              <p>{astroContext.limits}</p>
+              <p>左边列出行星、宫位和相位。这里不写批文。追问会把这份结构交给模型，用中文说明。</p>
+            </>
+          )}
+        </div>
+      ) : school === 'bazi' ? (
         <div className="insight-block" data-testid="bazi-insight">
           <h3>正在解读</h3>
           <p>{baziContext?.readingTarget ?? '还没有八字盘。'}</p>
@@ -148,14 +158,24 @@ export default function InsightPanel({
           <p className="insight-foot">以上按当前命盘填入宫位和星曜，没有调用外部解读接口。</p>
         </>
       )}
-      </div>
+    </details>
+  );
+
+  return (
+    <aside className={(reading || baziContext || astroContext) ? 'insight-panel is-ready' : 'insight-panel'} aria-label="解读" data-testid="insight-panel">
+      <header className="insight-panel-head">
+        <h2>解读</h2>
+        <p className="insight-kicker">{school === 'bazi' ? '当前解读的是八字盘' : school === 'astro' ? '当前看的是西洋星盘' : '固定说明默认收起，下面可以继续问'}</p>
+      </header>
       <InsightChat
-        chart={school === 'bazi' ? null : (reading ? chart : null)}
+        preface={preface}
+        chart={school === 'ziwei' ? chart : null}
         timeView={timeView}
         liunianYear={liunianYear}
         selectedPalace={selectedPalace}
         school={school}
         baziContext={school === 'bazi' ? baziContext : null}
+        astroContext={school === 'astro' ? astroContext : null}
         conversationKey={conversationKey}
       />
     </aside>
