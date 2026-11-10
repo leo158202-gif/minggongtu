@@ -508,6 +508,138 @@ body {
 @media (max-width: 700px) {
   .bazi-pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+.astro-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.astro-fields label,
+.astro-fields p {
+  color: var(--tx-2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.astro-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.astro-fields input,
+.astro-fields select {
+  border: 1px solid var(--t-border);
+  background: var(--t-bg);
+  color: var(--t-text);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.astro-fields .is-wide { grid-column: 1 / -1; }
+.astro-fields div.is-wide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.astro-fields div.is-wide button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border);
+  background: var(--t-bg);
+  color: var(--t-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.astro-fields div.is-wide button.is-on {
+  border-color: var(--t-border-acc);
+  background: var(--ac-bg);
+  color: var(--t-gold);
+}
+.astro-fields button:disabled,
+.astro-choice button:disabled,
+.astro-board > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.astro-note,
+.astro-legend,
+.astro-alert,
+.astro-choice p {
+  margin: 0 0 10px;
+  color: var(--t-text2);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.astro-alert { color: var(--ji); }
+.astro-choice {
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px solid var(--t-border-acc);
+  border-radius: 10px;
+  background: var(--ac-bg);
+}
+.astro-choice div,
+.astro-choice button,
+.astro-board > button {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.astro-choice button,
+.astro-board > button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border-acc);
+  background: var(--t-bg);
+  color: var(--t-gold);
+  font-size: 13px;
+  cursor: pointer;
+}
+.astro-wheel {
+  width: min(100%, 560px);
+  height: auto;
+  display: block;
+  margin: 8px auto 12px;
+}
+.astro-legend { color: var(--t-faint); font-size: 12px; }
+.astro-angles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.astro-angles p {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--t-border);
+  border-radius: 10px;
+  background: var(--t-bg);
+  color: var(--t-gold);
+  font-size: 13px;
+}
+.astro-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 13px;
+}
+.astro-table th,
+.astro-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--t-border);
+  text-align: left;
+  color: var(--t-text);
+}
+.astro-table th { color: var(--t-gold); font-weight: 600; }
+.astro-board h3 {
+  margin: 14px 0 8px;
+  color: var(--t-text);
+  font-size: 15px;
+}
+@media (max-width: 700px) {
+  .astro-fields,
+  .astro-angles { grid-template-columns: 1fr; }
+}
 @media (max-width: 900px) {
   .insight-panel,
   .insight-panel.is-ready {

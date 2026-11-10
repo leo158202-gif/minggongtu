@@ -6,5 +6,6 @@ export default async function ChartPage({
   searchParams: Promise<{ pan?: string }>;
 }) {
   const params = await searchParams;
-  return <ChartWorkspace initialSchool={params.pan === 'bazi' ? 'bazi' : 'ziwei'} />;
+  const school = params.pan === 'bazi' ? 'bazi' : params.pan === 'astro' ? 'astro' : 'ziwei';
+  return <ChartWorkspace initialSchool={school} />;
 }

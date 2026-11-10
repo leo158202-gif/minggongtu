@@ -500,6 +500,13 @@ export default function HomePage() {
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+            onClick={() => router.push('/astro')}
+            className="text-[11px] sm:text-xs px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full transition-all duration-300"
+            style={{ border: `1px solid ${c.navBorder}`, color: c.textMuted }}>
+            占星
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
             onClick={() => router.push('/chart')}
             className="text-[11px] sm:text-xs px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full transition-all duration-300"
             style={{ border: `1px solid ${c.goldLine}`, color: c.goldSolid }}>
@@ -546,13 +553,13 @@ export default function HomePage() {
             transition={{ duration: 0.7, delay: 0.55 }}
             className="text-xs md:text-sm tracking-[0.3em] mb-6"
             style={{ color: c.textMuted, opacity: 0.85 }}>
-            紫微斗数 · 八字 · 在本地起盘
+            紫微斗数 · 八字 · 占星 · 在本地起盘
           </motion.p>
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.65 }}
             className="text-sm max-w-xl mx-auto leading-relaxed mb-10"
             style={{ color: c.textMuted }}>
-            输入一次出生年月日时，可以看紫微斗数，也可以看八字。
+            输入一次出生年月日时，可以看紫微斗数、八字，也可以看西洋占星本命盘。
           </motion.p>
 
           {/* CTA */}
@@ -573,6 +580,14 @@ export default function HomePage() {
               style={{ color: c.goldSolid, background: 'transparent', border: 'none', cursor: 'pointer' }}
             >
               排八字
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/astro')}
+              className="text-sm tracking-[0.2em]"
+              style={{ color: c.goldSolid, background: 'transparent', border: 'none', cursor: 'pointer' }}
+            >
+              看星盘
             </button>
           </motion.div>
 

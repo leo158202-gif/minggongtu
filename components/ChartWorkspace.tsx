@@ -1,13 +1,20 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import AstroBoard from '@/components/AstroBoard';
+import AstroPlaceFields from '@/components/AstroPlaceFields';
 import BirthForm from '@/components/BirthForm';
 import BaziBoard from '@/components/BaziBoard';
 import ChartBoard from '@/components/ChartBoard';
 import InsightPanel from '@/components/InsightPanel';
 import { useTheme } from '@/components/ThemeProvider';
 import type { TimeView } from '@/components/TimeNav';
+import { buildAstroAiContext } from '@/lib/astro/ai-context';
+import { ASTRO_ERRORS } from '@/lib/astro/errors';
+import { astroGapKey, DEFAULT_ASTRO_PLACE, presetForBirthCity, readCoords, resolvedZone } from '@/lib/astro/place';
+import { requestAstroChart } from '@/lib/astro/request';
+import type { AstroChartView, AstroDstChoice, AstroPlaceState, AstroPrompt } from '@/lib/astro/types';
 import { buildBaziAiContext } from '@/lib/bazi/ai-context';
 import { castBazi } from '@/lib/bazi/cast';
 import type { BaziCalendar, BaziChartView, BaziSect } from '@/lib/bazi/types';
@@ -17,7 +24,7 @@ import { lunarToSolar } from '@/lib/ziwei/lunar-solar';
 import { shichenIndex } from '@/lib/ziwei/shichen';
 import type { BirthInfo, Palace, ZiweiChart } from '@/lib/ziwei/types';
 
-type School = 'ziwei' | 'bazi';
+type School = 'ziwei' | 'bazi' | 'astro';
 
 interface RawBirth {
   year: number;
@@ -35,6 +42,8 @@ interface RawBirth {
   trueSolar: boolean;
   sect: BaziSect;
   ziweiHour: number;
+  timeUnknown: boolean;
+  astro: AstroPlaceState;
 }
 
 interface CastBundle {
@@ -43,13 +52,16 @@ interface CastBundle {
   ziweiError: string | null;
   bazi: BaziChartView | null;
   baziError: string | null;
+  astro: AstroChartView | null;
+  astroError: string | null;
+  astroPrompt: AstroPrompt | null;
 }
 
 function pad(value: number): string {
   return String(value).padStart(2, '0');
 }
 
-function castBoth(raw: RawBirth): CastBundle {
+function castLocal(raw: RawBirth): Pick<CastBundle, 'ziwei' | 'ziweiError' | 'bazi' | 'baziError'> {
   const birthTime = `${pad(raw.clockHour)}:${pad(raw.clockMinute)}`;
   const birthDate = `${raw.year}-${pad(raw.month)}-${pad(raw.day)}`;
   let solar = { year: raw.year, month: raw.month, day: raw.day };
@@ -107,7 +119,7 @@ function castBoth(raw: RawBirth): CastBundle {
     baziError = error instanceof Error ? error.message : '八字起盘失败，请检查出生日期。';
   }
 
-  return { raw, ziwei, ziweiError, bazi, baziError };
+  return { ziwei, ziweiError, bazi, baziError };
 }
 
 function defaultDecadeIndex(chart: BaziChartView): number {
@@ -130,17 +142,28 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
   const [leapMonth, setLeapMonth] = useState(false);
   const [trueSolar, setTrueSolar] = useState(true);
   const [sect, setSect] = useState<BaziSect>(2);
+  const [astroPlace, setAstroPlace] = useState<AstroPlaceState>(DEFAULT_ASTRO_PLACE);
   const [bundle, setBundle] = useState<CastBundle | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [casting, setCasting] = useState(false);
   const [selectedPalace, setSelectedPalace] = useState<Palace | null>(null);
   const [timeView, setTimeView] = useState<TimeView>('mingpan');
   const [liunianYear, setLiunianYear] = useState(() => new Date().getFullYear());
   const [decadeIndex, setDecadeIndex] = useState(0);
   const [flowYear, setFlowYear] = useState<number | null>(null);
+  const timeUnknownRef = useRef(false);
+  const placeTouchedRef = useRef(false);
+  const placeRef = useRef(astroPlace);
+  const castSeq = useRef(0);
+  placeRef.current = astroPlace;
 
   const baziContext = useMemo(
     () => (bundle?.bazi ? buildBaziAiContext(bundle.bazi, decadeIndex, flowYear) : null),
     [bundle, decadeIndex, flowYear],
+  );
+  const astroContext = useMemo(
+    () => (bundle?.astro ? buildAstroAiContext(bundle.astro) : null),
+    [bundle],
   );
 
   const conversationKey = bundle
@@ -157,11 +180,18 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
       bundle.raw.clockMinute,
       bundle.raw.gender,
       bundle.raw.longitude ?? '',
+      bundle.astro?.utcText ?? '',
+      bundle.astro?.zone ?? '',
+      bundle.astro?.houseSystem ?? '',
+      bundle.astro?.latitude ?? '',
+      bundle.astro?.longitude ?? '',
+      bundle.astro?.timeStatus ?? '',
     ].join('|')
     : `${school}|empty`;
 
-  const applyBundle = (next: CastBundle) => {
+  const applyBundle = (next: CastBundle, resetNav: boolean) => {
     setBundle(next);
+    if (!resetNav) return;
     setSelectedPalace(null);
     setTimeView('mingpan');
     setLiunianYear(new Date().getFullYear());
@@ -173,6 +203,98 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
       setDecadeIndex(0);
       setFlowYear(null);
     }
+  };
+
+  const editPlace = (patch: Partial<AstroPlaceState>) => {
+    if ('latitude' in patch || 'longitude' in patch || 'zoneChoice' in patch || 'customZone' in patch) {
+      placeTouchedRef.current = true;
+    }
+    const next = { ...placeRef.current, ...patch };
+    const clearsTime = 'latitude' in patch || 'longitude' in patch || 'zoneChoice' in patch || 'customZone' in patch;
+    if (clearsTime) {
+      if (!('dstChoice' in patch)) next.dstChoice = null;
+      if (!('acceptGapKey' in patch)) next.acceptGapKey = null;
+    }
+    placeRef.current = next;
+    setAstroPlace(next);
+  };
+
+  const publish = async (raw: RawBirth, mode: 'form' | 'settings' | 'astro') => {
+    const seq = ++castSeq.current;
+    setCasting(true);
+    const local = castLocal(raw);
+    let astro: AstroChartView | null = null;
+    let astroError: string | null = null;
+    let astroPrompt: AstroPrompt | null = null;
+    const coords = readCoords(raw.astro.latitude, raw.astro.longitude);
+    if (raw.timeUnknown) {
+      astroError = ASTRO_ERRORS.unknownTime;
+    } else if (!coords) {
+      astroError = ASTRO_ERRORS.needPlace;
+    } else {
+      try {
+        const zone = resolvedZone(raw.astro);
+        const key = astroGapKey({
+          calendar: raw.calendar,
+          leapMonth: raw.leapMonth,
+          year: raw.year,
+          month: raw.month,
+          day: raw.day,
+          hour: raw.clockHour,
+          minute: raw.clockMinute,
+          zone,
+          latitude: raw.astro.latitude,
+          longitude: raw.astro.longitude,
+        });
+        const result = await requestAstroChart({
+          calendar: raw.calendar,
+          year: raw.year,
+          month: raw.month,
+          day: raw.day,
+          hour: raw.clockHour,
+          minute: raw.clockMinute,
+          leapMonth: raw.leapMonth,
+          timeUnknown: false,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          zone,
+          dstChoice: raw.astro.dstChoice,
+          acceptGap: raw.astro.acceptGapKey !== null && raw.astro.acceptGapKey === key,
+          houseSystem: raw.astro.houseSystem,
+          transitUtc: null,
+        });
+        if (seq !== castSeq.current) return;
+        if (result.ok) astro = result.chart;
+        else {
+          astroError = result.error;
+          astroPrompt = result.prompt ?? null;
+        }
+      } catch {
+        if (seq !== castSeq.current) return;
+        astroError = ASTRO_ERRORS.network;
+      }
+    }
+    if (seq !== castSeq.current) return;
+    const next: CastBundle = { raw, ...local, astro, astroError, astroPrompt };
+    if (mode === 'astro' && !astro && astroError === ASTRO_ERRORS.network) {
+      setBundle(current => (current?.astro ? { ...current, astroError } : next));
+      setCasting(false);
+      return;
+    }
+    const any = Boolean(next.ziwei || next.bazi || next.astro || next.astroPrompt);
+    if (mode === 'form' && !any) {
+      setFormError(next.astroError || next.baziError || next.ziweiError || '起盘失败，请检查出生日期。');
+      setCasting(false);
+      return;
+    }
+    setFormError(null);
+    applyBundle(next, mode !== 'astro');
+    setCasting(false);
+  };
+
+  const commitPlace = () => {
+    if (!bundle) return;
+    void publish({ ...bundle.raw, astro: placeRef.current }, 'astro');
   };
 
   const startChart = (info: BirthInfo) => {
@@ -193,28 +315,54 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
       trueSolar,
       sect,
       ziweiHour: info.hour,
+      timeUnknown: timeUnknownRef.current,
+      astro: placeRef.current,
     };
-    const next = castBoth(raw);
-    if (!next.ziwei && !next.bazi) {
-      setFormError(next.baziError || next.ziweiError || '起盘失败，请检查出生日期。');
-      return;
-    }
-    setFormError(null);
-    applyBundle(next);
+    void publish(raw, 'form');
   };
 
   const recastSettings = (patch: Partial<Pick<RawBirth, 'calendar' | 'leapMonth' | 'trueSolar' | 'sect'>>) => {
     if (!bundle) return;
-    const raw = { ...bundle.raw, ...patch };
+    const raw = { ...bundle.raw, ...patch, astro: placeRef.current };
     if (raw.calendar !== 'lunar') raw.leapMonth = false;
     raw.ziweiHour = shichenIndex(raw.clockHour, raw.clockMinute, raw.trueSolar ? (raw.longitude ?? 120) : 120);
-    applyBundle(castBoth(raw));
+    if (patch.calendar !== undefined || patch.leapMonth !== undefined) {
+      raw.astro = { ...raw.astro, dstChoice: null, acceptGapKey: null };
+      placeRef.current = raw.astro;
+      setAstroPlace(raw.astro);
+    }
+    void publish(raw, 'settings');
   };
 
-  const showResult = !!bundle && (!!bundle.ziwei || !!bundle.bazi);
+  const chooseDst = (choice: AstroDstChoice) => {
+    editPlace({ dstChoice: choice });
+    commitPlace();
+  };
+
+  const acceptGap = () => {
+    if (!bundle) return;
+    const place = placeRef.current;
+    const key = astroGapKey({
+      calendar: bundle.raw.calendar,
+      leapMonth: bundle.raw.leapMonth,
+      year: bundle.raw.year,
+      month: bundle.raw.month,
+      day: bundle.raw.day,
+      hour: bundle.raw.clockHour,
+      minute: bundle.raw.clockMinute,
+      zone: resolvedZone(place),
+      latitude: place.latitude,
+      longitude: place.longitude,
+    });
+    editPlace({ acceptGapKey: key });
+    commitPlace();
+  };
+
+  const showResult = !!bundle && (!!bundle.ziwei || !!bundle.bazi || !!bundle.astro || !!bundle.astroPrompt);
   const activeError = bundle
-    ? (school === 'ziwei' ? bundle.ziweiError : bundle.baziError)
+    ? (school === 'ziwei' ? bundle.ziweiError : school === 'bazi' ? bundle.baziError : bundle.astroError)
     : formError;
+  const schoolLabel = school === 'bazi' ? '八字' : school === 'astro' ? '占星' : '紫微斗数';
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--bg-0)', color: 'var(--tx-1)' }}>
@@ -237,7 +385,11 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
           {bundle && (
             <button
               type="button"
-              onClick={() => { setBundle(null); setFormError(null); }}
+              onClick={() => {
+                setAstroPlace(placeRef.current);
+                setBundle(null);
+                setFormError(null);
+              }}
               style={{
                 padding: '6px 12px',
                 cursor: 'pointer',
@@ -274,6 +426,7 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
         <div className="school-switch" role="group" aria-label="选择盘种" data-testid="school-switch">
           <button type="button" className={school === 'ziwei' ? 'is-on' : undefined} aria-pressed={school === 'ziwei'} onClick={() => setSchool('ziwei')}>紫微斗数</button>
           <button type="button" className={school === 'bazi' ? 'is-on' : undefined} aria-pressed={school === 'bazi'} onClick={() => setSchool('bazi')}>八字</button>
+          <button type="button" data-testid="school-astro" className={school === 'astro' ? 'is-on' : undefined} aria-pressed={school === 'astro'} onClick={() => setSchool('astro')}>占星</button>
         </div>
 
         <div className={showResult ? 'chart-result' : 'chart-result chart-result-empty'}>
@@ -281,11 +434,14 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
             {!showResult ? (
               <>
                 <p style={{ fontSize: 12, letterSpacing: '0.35em', color: 'var(--ac)', marginBottom: 8 }}>
-                  {school === 'bazi' ? '八字' : '紫微斗数'}
+                  {schoolLabel}
                 </p>
                 <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: 'var(--tx-0)' }}>起盘</h1>
                 <p style={{ color: 'var(--tx-2)', marginBottom: 16, fontSize: 14, lineHeight: 1.7 }}>
-                  出生资料只填一次。排好以后可以在紫微斗数和八字之间切换，资料不会丢掉。
+                  出生资料只填一次。排好以后可以在紫微斗数、八字和占星之间切换，资料不会丢掉。
+                  {school === 'astro'
+                    ? ' 占星把出生时间当作所选时区的钟面。勾选时辰不详时，占星不排上升。'
+                    : ' 占星另外使用纬度、经度和时区，并把出生时间当作该时区的钟面。'}
                 </p>
                 <Settings
                   calendar={calendar}
@@ -297,12 +453,37 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
                   onTrueSolar={setTrueSolar}
                   onSect={setSect}
                 />
-                <BirthForm calendar={calendar} trueSolar={trueSolar} onSubmit={startChart} />
+                {school === 'astro' && (
+                  <AstroPlaceFields place={astroPlace} disabled={casting} onChange={editPlace} />
+                )}
+                <BirthForm
+                  calendar={calendar}
+                  trueSolar={trueSolar}
+                  clockLabel={school === 'astro' ? '所选时区的钟面时间' : undefined}
+                  loading={casting}
+                  onFormSave={data => {
+                    timeUnknownRef.current = data.unknownTime;
+                    if (placeTouchedRef.current) return;
+                    const preset = presetForBirthCity(data.city);
+                    if (!preset) return;
+                    const next = {
+                      ...placeRef.current,
+                      latitude: String(preset.latitude),
+                      longitude: String(preset.longitude),
+                      zoneChoice: preset.zone,
+                      dstChoice: null,
+                      acceptGapKey: null,
+                    };
+                    placeRef.current = next;
+                    setAstroPlace(next);
+                  }}
+                  onSubmit={startChart}
+                />
                 {activeError && <p role="alert" style={{ color: 'var(--ji)', fontSize: 13, marginTop: 12 }}>{activeError}</p>}
                 <p style={{ color: 'var(--tx-3)', fontSize: 12, marginTop: 28, lineHeight: 1.7 }}>
                   {UPSTREAM_NOTE}{' · '}
                   <a href={UPSTREAM_URL} style={{ color: 'var(--ac)' }}>{UPSTREAM_URL.replace('https://', '')}</a>
-                  {' · 八字库 xuantian-bazi MIT'}
+                  {' · 八字库 xuantian-bazi MIT · 星盘库 caelus MIT'}
                 </p>
               </>
             ) : school === 'bazi' && bundle?.bazi ? (
@@ -349,8 +530,38 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
                   onLiunianYearChange={setLiunianYear}
                 />
               </>
+            ) : school === 'astro' && bundle ? (
+              <>
+                <Settings
+                  calendar={bundle.raw.calendar}
+                  leapMonth={bundle.raw.leapMonth}
+                  trueSolar={bundle.raw.trueSolar}
+                  sect={bundle.raw.sect}
+                  onCalendar={(value) => recastSettings({ calendar: value, leapMonth: value === 'lunar' ? bundle.raw.leapMonth : false })}
+                  onLeap={(value) => recastSettings({ leapMonth: value })}
+                  onTrueSolar={(value) => recastSettings({ trueSolar: value })}
+                  onSect={(value) => recastSettings({ sect: value })}
+                />
+              <AstroBoard
+                chart={bundle.astro}
+                error={bundle.astroError}
+                prompt={bundle.astroPrompt}
+                place={astroPlace}
+                casting={casting}
+                onChange={editPlace}
+                onCommit={commitPlace}
+                onChooseDst={chooseDst}
+                onAcceptGap={acceptGap}
+                onRefreshTransit={commitPlace}
+              />
+              </>
             ) : null}
-            {showResult && activeError && (
+            {showResult && school !== 'astro' && bundle?.astro && !['Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Taipei', 'Asia/Macau'].includes(bundle.astro.zone) && (
+              <p className="astro-note" data-testid="clock-meaning">
+                占星按 {bundle.astro.zone}（{bundle.astro.offsetLabel}）理解这组钟面数字。八字和紫微仍把同一组数字当作北京时间。
+              </p>
+            )}
+            {showResult && activeError && school !== 'astro' && (
               <p role="alert" style={{ color: 'var(--ji)', fontSize: 13, marginTop: 12 }}>{activeError}</p>
             )}
           </div>
@@ -361,6 +572,7 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
             liunianYear={liunianYear}
             school={school}
             baziContext={school === 'bazi' ? baziContext : null}
+            astroContext={school === 'astro' ? astroContext : null}
             conversationKey={conversationKey}
           />
         </div>
@@ -401,7 +613,7 @@ function Settings({
         <button type="button" className={sect === 2 ? 'is-on' : undefined} aria-pressed={sect === 2} onClick={() => onSect(2)}>晚子时算当天</button>
         <button type="button" className={sect === 1 ? 'is-on' : undefined} aria-pressed={sect === 1} onClick={() => onSect(1)}>23点起算次日</button>
       </div>
-      <p>子时换日只改八字的日柱。紫微仍用原来的早晚子时。真太阳时打开时，八字交给 xuantian-bazi 修正一次，紫微只用原来的经度差。</p>
+      <p>子时换日只改八字的日柱。紫微仍用原来的早晚子时。真太阳时打开时，八字交给 xuantian-bazi 修正一次，紫微只用原来的经度差。占星不使用这个开关。</p>
     </div>
   );
 }
