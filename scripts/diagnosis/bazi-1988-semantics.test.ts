@@ -5,7 +5,8 @@
  * 跑: npx tsx scripts/diagnosis/bazi-1988-semantics.test.ts
  */
 import { calculateChart } from 'xuantian-bazi';
-import { castBazi } from '../../lib/bazi/cast';
+import { BAZI_TIME_BASIS_REQUIRED, castBazi } from '../../lib/bazi/cast';
+import { buildBaziAiContext, buildBaziSystemPrompt } from '../../lib/bazi/ai-context';
 
 let failures = 0;
 const fail = (msg: string) => { console.error(`  ✗ ${msg}`); failures++; };
@@ -34,6 +35,18 @@ function direct(zone: string, trueSolar: boolean, extra: { birthDate?: string; b
   });
 }
 
+let missingMessage = '';
+try {
+  castBazi({
+    gender: 'female', calendar: 'solar', birthDate: '1988-07-21', birthTime: '04:15',
+    leapMonth: false, sect: 2, trueSolar: true, longitude: GUANGZHOU_CENTER,
+  });
+} catch (error) {
+  missingMessage = error instanceof Error ? error.message : '';
+}
+if (missingMessage !== BAZI_TIME_BASIS_REQUIRED) fail(`未选择时间依据时没有停住：${missingMessage}`);
+else ok('历史夏令时没有选择时不排八字');
+
 const product = castBazi({
   gender: 'female',
   calendar: 'solar',
@@ -43,33 +56,54 @@ const product = castBazi({
   sect: 2,
   trueSolar: true,
   longitude: GUANGZHOU_CENTER,
+  timeBasis: 'standard',
 });
 const productPillars = product.pillars.map(item => item.ganZhi).join(' ');
-const library = direct('Asia/Shanghai', true);
-const libraryPillars = pillarsOf(library);
-const trueSolar = library.timeCorrections?.true_solar as {
+const utc8 = direct('Etc/GMT-8', true);
+const utc8Solar = utc8.timeCorrections?.true_solar as {
   correctionMinutes?: number;
   longitudeCorrectionMinutes?: number;
   equationOfTimeMinutes?: number;
   dstOffsetMinutes?: number;
-  source?: string;
 } | undefined;
-const dst = library.timeCorrections?.dst as { dstApplied?: boolean; dstMinutes?: number } | undefined;
-
 console.log('样例 1988-07-21 04:15 女 广州中心经度 113.3°（近似，不是医院）');
-console.log(`产品四柱 ${productPillars} 排盘时刻 ${product.chartDatetime} 夏令时 ${product.dstMinutes} 分 真太阳时合计 ${product.trueSolarMinutes} 分`);
-console.log(`库直调四柱 ${libraryPillars} 排盘时刻 ${library.chartDateTime} 来源 ${trueSolar?.source}`);
-console.log(`经度差 ${trueSolar?.longitudeCorrectionMinutes} 分 均时差 ${trueSolar?.equationOfTimeMinutes} 分 DST偏移 ${trueSolar?.dstOffsetMinutes} 分`);
+console.log(`标准北京时间四柱 ${productPillars} 排盘时刻 ${product.chartDatetime} 真太阳时合计 ${product.trueSolarMinutes} 分`);
+if (productPillars !== CONFIRMED || product.dstApplied) {
+  fail(`标准北京时间结果不对：${productPillars} dst=${product.dstApplied}`);
+} else if (!/T\d{2}:\d{2}:\d{2}$/.test(product.chartDatetime) || product.chartDatetime !== utc8.chartDateTime) {
+  fail(`排盘时刻没有保留真实秒数，或和固定 UTC+8 不一致：${product.chartDatetime} / ${utc8.chartDateTime}`);
+} else if (utc8Solar?.dstOffsetMinutes) {
+  fail('标准北京时间仍扣了夏令时');
+} else if (Math.abs((utc8Solar?.correctionMinutes ?? 0) - ((utc8Solar?.longitudeCorrectionMinutes ?? 0) + (utc8Solar?.equationOfTimeMinutes ?? 0))) > 0.01) {
+  fail('真太阳时合计不是一次经度差加均时差');
+} else ok(`标准北京时间一次校正，排盘时刻 ${product.chartDatetime}，四柱 ${productPillars}`);
 
-if (productPillars !== DST_WALL || product.chartDatetime !== '1988-07-21T02:41:51') {
-  fail(`产品路径不再是已观测的错误结果 ${productPillars} ${product.chartDatetime}`);
-} else if (library.chartDateTime !== product.chartDatetime || libraryPillars !== productPillars) {
-  fail('封装又做了一次校正，和库直调不一致');
-} else if (dst?.dstMinutes !== -60 || trueSolar?.dstOffsetMinutes !== 60) {
-  fail(`夏令时不是一次 -60 分：dst=${dst?.dstMinutes} offset=${trueSolar?.dstOffsetMinutes}`);
-} else if ((trueSolar?.correctionMinutes ?? 0) > -80) {
-  fail('产品合计校正没有包含那 60 分');
-} else ok('产品只调用库一次：Asia/Shanghai 真太阳时内含历史夏令时 -60 分，得到辛丑、02:41:51');
+const wallProduct = castBazi({
+  gender: 'female', calendar: 'solar', birthDate: '1988-07-21', birthTime: '04:15',
+  leapMonth: false, sect: 2, trueSolar: true, longitude: GUANGZHOU_CENTER, timeBasis: 'wall',
+});
+const wallLibrary = direct('Asia/Shanghai', true);
+const wallPillars = wallProduct.pillars.map(item => item.ganZhi).join(' ');
+console.log(`原始钟面四柱 ${wallPillars} 排盘时刻 ${wallProduct.chartDatetime} 夏令时 ${wallProduct.dstMinutes} 分 合计 ${wallProduct.trueSolarMinutes} 分`);
+if (wallPillars !== DST_WALL || wallProduct.dstMinutes !== -60 || wallProduct.chartDatetime !== wallLibrary.chartDateTime) {
+  fail(`原始钟面没有一次扣到库的历史夏令时结果：${wallPillars} ${wallProduct.chartDatetime}`);
+} else if ((wallProduct.trueSolarMinutes ?? 0) > -80) {
+  fail('原始钟面的合计校正没有包含夏令时');
+} else ok(`原始钟面一次校正，排盘时刻 ${wallProduct.chartDatetime}，四柱 ${wallPillars}`);
+
+const standardOff = castBazi({
+  gender: 'female', calendar: 'solar', birthDate: '1988-07-21', birthTime: '04:15',
+  leapMonth: false, sect: 2, trueSolar: false, longitude: GUANGZHOU_CENTER, timeBasis: 'standard',
+});
+const wallOff = castBazi({
+  gender: 'female', calendar: 'solar', birthDate: '1988-07-21', birthTime: '04:15',
+  leapMonth: false, sect: 2, trueSolar: false, longitude: GUANGZHOU_CENTER, timeBasis: 'wall',
+});
+console.log(`真太阳时关 标准 ${standardOff.chartDatetime} ${standardOff.pillars.map(item => item.ganZhi).join(' ')}`);
+console.log(`真太阳时关 原始 ${wallOff.chartDatetime} ${wallOff.pillars.map(item => item.ganZhi).join(' ')} dst ${wallOff.dstMinutes}`);
+if (standardOff.chartDatetime !== '1988-07-21T04:15:00' || standardOff.dstApplied) fail('标准北京时间关闭真太阳时仍改了钟面');
+else if (wallOff.dstMinutes !== -60 || wallOff.trueSolar || wallOff.chartDatetime === standardOff.chartDatetime) fail(`原始钟面关闭真太阳时没有只扣夏令时：${wallOff.chartDatetime}`);
+else ok('真太阳时关闭时，原始钟面只扣一次夏令时，标准北京时间保持钟面');
 
 const standard = direct('Etc/GMT-8', true);
 const standardSolar = standard.timeCorrections?.true_solar as {
@@ -99,7 +133,7 @@ if (pillarsOf(wall) !== DST_WALL || wall.chartDateTime !== '1988-07-21T02:41:51'
 
 const male = castBazi({
   gender: 'male', calendar: 'solar', birthDate: '1988-07-21', birthTime: '04:15',
-  leapMonth: false, sect: 2, trueSolar: true, longitude: GUANGZHOU_CENTER,
+  leapMonth: false, sect: 2, trueSolar: true, longitude: GUANGZHOU_CENTER, timeBasis: 'standard',
 });
 if (male.pillars.map(item => item.ganZhi).join(' ') !== productPillars) fail('性别改变了四柱');
 else ok('性别不改变这四柱；日主称谓差异不是时柱错误');
@@ -139,6 +173,11 @@ console.log(`农历 2023-02-20 ${lunarMonth.solarDatetime} ${lunarMonth.pillars.
 console.log(`闰月 ${leapMonth.solarDatetime} ${leapMonth.pillars.map(item => item.ganZhi).join(' ')}`);
 if (lunarMonth.solarDatetime === leapMonth.solarDatetime) fail('闰月和常月排成了同一天');
 else ok('农历闰月仍换成另一个公历日');
+
+const prompt = buildBaziSystemPrompt(buildBaziAiContext(product, 0, null));
+if (!prompt.includes(product.timeBasisLabel) || !prompt.includes(product.chartDatetime) || !prompt.includes('不要再扣夏令时')) {
+  fail('追问上下文没有写明时间依据，或没有禁止再校正');
+} else ok(`追问带上时间依据和真实时刻 ${product.chartDatetime}`);
 
 if (failures) {
   console.error(`\n${failures} 项失败`);

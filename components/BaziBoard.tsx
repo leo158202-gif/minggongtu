@@ -22,12 +22,15 @@ export default function BaziBoard({ chart, decadeIndex, year, onDecadeChange, on
       <h2>四柱</h2>
       <p className="bazi-target" data-testid="bazi-reading-target">{target}</p>
       <p className="bazi-caliber" data-testid="bazi-caliber">
-        钟面 {chart.birthDate} {chart.birthTime}。排盘时刻 {chart.chartDatetime}。
-        年柱、月柱按节气交换。输入按北京时间 Asia/Shanghai。子时：{chart.sectLabel}。
+        钟面 {chart.birthDate} {chart.birthTime}。{chart.timeBasisLabel}。排盘时刻 {chart.chartDatetime}。
+        年柱、月柱按节气交换。子时：{chart.sectLabel}。
         {chart.trueSolar
-          ? ` 真太阳时由八字库计算一次${chart.assumedMeridian120 ? '，未选出生地时经度按东经 120°' : ''}。${chart.dstApplied ? `这次夏令时修正 ${chart.dstMinutes ?? 0} 分钟。` : '这次没有夏令时修正。'}排盘时刻 ${chart.chartDatetime}。`
-          : ' 真太阳时已关闭，直接用钟面时间，不再做经度或夏令时修正。'}
-        紫微时辰仍只用本站原来的经度差，两套校正不会叠在同一次计算上。
+          ? ` 真太阳时计算一次${chart.assumedMeridian120 ? '，未选出生地时经度按东经 120°' : ''}。`
+          : ' 真太阳时已关闭。'}
+        {chart.timeBasis === 'wall'
+          ? (chart.dstApplied ? ` 原始钟面的历史夏令时已扣 ${Math.abs(chart.dstMinutes ?? 0)} 分钟。` : ' 这一天没有可扣的历史夏令时。')
+          : ' 标准北京时间不再扣历史夏令时。'}
+        紫微仍用原来的经度差，夏令时不自动扣，也不跟随这个时间依据。
       </p>
 
       <PillarSheet pillars={chart.pillars} />

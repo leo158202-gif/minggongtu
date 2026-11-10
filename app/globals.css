@@ -426,8 +426,40 @@ body {
   background: var(--ac-bg);
   color: var(--t-gold);
 }
-.bazi-settings {
+.bazi-settings,
+.bazi-basis {
   margin: 0 0 14px;
+}
+.bazi-basis {
+  padding: 10px;
+  border: 1px solid var(--t-border-acc);
+  border-radius: 12px;
+  background: var(--ac-bg);
+}
+.bazi-basis p {
+  margin: 0 0 8px;
+  color: var(--t-text2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.bazi-basis div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bazi-basis button {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border);
+  background: var(--t-bg);
+  color: var(--t-text);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.bazi-basis button.is-on {
+  border-color: var(--t-border-acc);
+  color: var(--t-gold);
 }
 .bazi-settings label,
 .bazi-settings p {

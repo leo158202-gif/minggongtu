@@ -13,6 +13,7 @@ export function buildBaziAiContext(chart: BaziChartView, decadeIndex: number, ye
     calendarLabel: chart.calendarLabel,
     sectLabel: chart.sectLabel,
     trueSolar: chart.trueSolar,
+    timeBasisLabel: chart.timeBasisLabel,
     correction: correctionText(chart),
     dayMaster: chart.dayMaster,
     dayMasterElement: chart.dayMasterElement,
@@ -38,6 +39,7 @@ export function buildBaziSystemPrompt(context: BaziAiContext): string {
     '你是命宫图里的八字对话助手。这是一张八字盘，不是紫微斗数命盘。',
     '不要改用十二宫、主星亮度或四化来回答，也不要把这张盘说成紫微盘。',
     '下面 JSON 是这一次提问时的四柱、藏干、十神、五行、纳音，以及用户正在看的大运和流年。换盘后以这一份为准。',
+    'timeBasisLabel 是已经确定的时间依据。排盘时刻和四柱已经按它算好，不要再扣夏令时，也不要再做一次真太阳时。',
     '回答要落到这个人可以怎么做、这步大运或这个流年宜动还是宜守，用具体建议和趋势用语。',
     '不要写成干支名词词典，不要逐条解释十神定义。',
     '只使用 JSON 里出现的柱、干支、十神、大运和流年，不要编造盘上没有的柱。',
@@ -57,8 +59,12 @@ export function decadeTextOf(decade: { label: string; startAge: number | null; e
 }
 
 function correctionText(chart: BaziChartView): string {
-  if (!chart.trueSolar) return '真太阳时关闭，八字直接用钟面时间，没有再做经度或夏令时修正。';
-  const place = chart.assumedMeridian120 ? '未选出生地，经度按东经 120°' : `经度 ${chart.longitude}°`;
-  const dst = chart.dstApplied ? `夏令时已修正 ${chart.dstMinutes ?? 0} 分钟` : '这次没有夏令时修正';
-  return `真太阳时只由八字库计算一次。时区 Asia/Shanghai，${place}。${dst}。排盘时刻 ${chart.chartDatetime}。`;
+  const place = chart.assumedMeridian120 ? '未选出生地，经度按东经 120°' : `经度 ${chart.longitude ?? 120}°`;
+  const basis = chart.timeBasis === 'wall'
+    ? `时间依据是当年的原始钟面。历史夏令时 ${chart.dstApplied ? `已扣 ${Math.abs(chart.dstMinutes ?? 0)} 分钟` : '这一天没有可扣的夏令时'}。`
+    : '时间依据是已经校准的标准北京时间 UTC+8。没有扣历史夏令时。';
+  const solar = chart.trueSolar
+    ? `真太阳时只计算一次，${place}。`
+    : '真太阳时关闭。';
+  return `${basis}${solar}排盘时刻 ${chart.chartDatetime}。紫微不使用这个依据。`;
 }

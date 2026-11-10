@@ -16,7 +16,8 @@ import { astroGapKey, DEFAULT_ASTRO_PLACE, presetForBirthCity, readCoords, resol
 import { requestAstroChart } from '@/lib/astro/request';
 import type { AstroChartView, AstroDstChoice, AstroPlaceState, AstroPrompt } from '@/lib/astro/types';
 import { buildBaziAiContext } from '@/lib/bazi/ai-context';
-import { castBazi } from '@/lib/bazi/cast';
+import { BAZI_TIME_BASIS_LABEL, BAZI_TIME_BASIS_REQUIRED, baziClockForkMinutes, castBazi } from '@/lib/bazi/cast';
+import type { BaziTimeBasis } from '@/lib/bazi/types';
 import type { BaziCalendar, BaziChartView, BaziSect } from '@/lib/bazi/types';
 import { APP_VERSION, SITE_NAME, UPSTREAM_NOTE, UPSTREAM_URL } from '@/lib/site';
 import { generateChart } from '@/lib/ziwei/algorithm';
@@ -44,6 +45,7 @@ interface RawBirth {
   ziweiHour: number;
   timeUnknown: boolean;
   astro: AstroPlaceState;
+  timeBasis: BaziTimeBasis | null;
 }
 
 interface CastBundle {
@@ -114,6 +116,7 @@ function castLocal(raw: RawBirth): Pick<CastBundle, 'ziwei' | 'ziweiError' | 'ba
       sect: raw.sect,
       trueSolar: raw.trueSolar,
       longitude: raw.trueSolar ? raw.longitude : undefined,
+      timeBasis: raw.timeBasis ?? undefined,
     });
   } catch (error) {
     baziError = error instanceof Error ? error.message : '八字起盘失败，请检查出生日期。';
@@ -157,6 +160,21 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
   const castSeq = useRef(0);
   placeRef.current = astroPlace;
 
+  const baziFork = useMemo(() => {
+    if (!bundle) return 0;
+    const raw = bundle.raw;
+    return baziClockForkMinutes({
+      gender: raw.gender,
+      calendar: raw.calendar,
+      birthDate: `${pad(raw.year)}-${pad(raw.month)}-${pad(raw.day)}`,
+      birthTime: `${pad(raw.clockHour)}:${pad(raw.clockMinute)}`,
+      leapMonth: raw.leapMonth,
+      sect: raw.sect,
+      trueSolar: raw.trueSolar,
+      longitude: raw.longitude,
+    });
+  }, [bundle]);
+
   const baziContext = useMemo(
     () => (bundle?.bazi ? buildBaziAiContext(bundle.bazi, decadeIndex, flowYear) : null),
     [bundle, decadeIndex, flowYear],
@@ -186,6 +204,7 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
       bundle.astro?.latitude ?? '',
       bundle.astro?.longitude ?? '',
       bundle.astro?.timeStatus ?? '',
+      bundle.raw.timeBasis ?? '',
     ].join('|')
     : `${school}|empty`;
 
@@ -317,6 +336,7 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
       ziweiHour: info.hour,
       timeUnknown: timeUnknownRef.current,
       astro: placeRef.current,
+      timeBasis: null,
     };
     void publish(raw, 'form');
   };
@@ -327,11 +347,17 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
     if (raw.calendar !== 'lunar') raw.leapMonth = false;
     raw.ziweiHour = shichenIndex(raw.clockHour, raw.clockMinute, raw.trueSolar ? (raw.longitude ?? 120) : 120);
     if (patch.calendar !== undefined || patch.leapMonth !== undefined) {
+      raw.timeBasis = null;
       raw.astro = { ...raw.astro, dstChoice: null, acceptGapKey: null };
       placeRef.current = raw.astro;
       setAstroPlace(raw.astro);
     }
     void publish(raw, 'settings');
+  };
+
+  const chooseBasis = (timeBasis: BaziTimeBasis) => {
+    if (!bundle) return;
+    void publish({ ...bundle.raw, timeBasis }, 'settings');
   };
 
   const chooseDst = (choice: AstroDstChoice) => {
@@ -486,6 +512,22 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
                   {' · 八字库 xuantian-bazi MIT · 星盘库 caelus MIT'}
                 </p>
               </>
+            ) : school === 'bazi' && bundle && !bundle.bazi ? (
+              <>
+                <Settings
+                  calendar={bundle.raw.calendar}
+                  leapMonth={bundle.raw.leapMonth}
+                  trueSolar={bundle.raw.trueSolar}
+                  sect={bundle.raw.sect}
+                  onCalendar={(value) => recastSettings({ calendar: value, leapMonth: value === 'lunar' ? bundle.raw.leapMonth : false })}
+                  onLeap={(value) => recastSettings({ leapMonth: value })}
+                  onTrueSolar={(value) => recastSettings({ trueSolar: value })}
+                  onSect={(value) => recastSettings({ sect: value })}
+                />
+                {Math.abs(baziFork) >= 30 && (
+                  <TimeBasisSwitch value={bundle.raw.timeBasis} onChange={chooseBasis} />
+                )}
+              </>
             ) : school === 'bazi' && bundle?.bazi ? (
               <>
                 <Settings
@@ -498,6 +540,9 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
                   onTrueSolar={(value) => recastSettings({ trueSolar: value })}
                   onSect={(value) => recastSettings({ sect: value })}
                 />
+                {Math.abs(baziFork) >= 30 && (
+                  <TimeBasisSwitch value={bundle.raw.timeBasis} onChange={chooseBasis} />
+                )}
                 <BaziBoard
                   chart={bundle.bazi}
                   decadeIndex={decadeIndex}
@@ -581,6 +626,18 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
   );
 }
 
+function TimeBasisSwitch({ value, onChange }: { value: BaziTimeBasis | null; onChange: (value: BaziTimeBasis) => void }) {
+  return (
+    <div className="bazi-basis" data-testid="bazi-time-basis">
+      <p>{BAZI_TIME_BASIS_REQUIRED}紫微仍按原来的规则，不跟随这个选择。</p>
+      <div role="group" aria-label="八字时间依据">
+        <button type="button" data-testid="bazi-basis-standard" className={value === 'standard' ? 'is-on' : undefined} aria-pressed={value === 'standard'} onClick={() => onChange('standard')}>{BAZI_TIME_BASIS_LABEL.standard}</button>
+        <button type="button" data-testid="bazi-basis-wall" className={value === 'wall' ? 'is-on' : undefined} aria-pressed={value === 'wall'} onClick={() => onChange('wall')}>{BAZI_TIME_BASIS_LABEL.wall}</button>
+      </div>
+    </div>
+  );
+}
+
 function Settings({
   calendar, leapMonth, trueSolar, sect, onCalendar, onLeap, onTrueSolar, onSect,
 }: {
@@ -613,7 +670,7 @@ function Settings({
         <button type="button" className={sect === 2 ? 'is-on' : undefined} aria-pressed={sect === 2} onClick={() => onSect(2)}>晚子时算当天</button>
         <button type="button" className={sect === 1 ? 'is-on' : undefined} aria-pressed={sect === 1} onClick={() => onSect(1)}>23点起算次日</button>
       </div>
-      <p>子时换日只改八字的日柱。紫微仍用原来的早晚子时。真太阳时打开时，八字交给 xuantian-bazi 修正一次，紫微只用原来的经度差。占星不使用这个开关。</p>
+      <p>子时换日只改八字的日柱。紫微仍用原来的早晚子时，夏令时不自动扣。真太阳时打开时，八字按所选时间依据校正一次，紫微只用原来的经度差。占星不使用这个开关。</p>
     </div>
   );
 }

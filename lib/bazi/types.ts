@@ -1,6 +1,8 @@
 export type BaziSchool = 'ziwei' | 'bazi';
 export type BaziCalendar = 'solar' | 'lunar';
 export type BaziSect = 1 | 2;
+/** standard：钟面已是标准北京时间 UTC+8。wall：钟面是出生地当年的原始时间，历史夏令时按当时的时差。 */
+export type BaziTimeBasis = 'standard' | 'wall';
 
 export interface BaziCastInput {
   gender: 'male' | 'female';
@@ -14,6 +16,8 @@ export interface BaziCastInput {
   trueSolar: boolean;
   /** 东经。真太阳时关闭时不要传入。 */
   longitude?: number;
+  /** 历史夏令时会改变时刻时必须传入。普通日期可以不传，按标准北京时间。 */
+  timeBasis?: BaziTimeBasis;
 }
 
 export interface BaziHiddenStem {
@@ -85,6 +89,10 @@ export interface BaziChartView {
   trueSolarSource: string;
   sectLabel: string;
   calendarLabel: string;
+  timeBasis: BaziTimeBasis;
+  timeBasisLabel: string;
+  /** 两种时间依据会差出大约一小时。 */
+  timeFork: boolean;
 }
 
 export interface BaziAiContext {
@@ -93,6 +101,7 @@ export interface BaziAiContext {
   calendarLabel: string;
   sectLabel: string;
   trueSolar: boolean;
+  timeBasisLabel: string;
   correction: string;
   dayMaster: string;
   dayMasterElement: string;

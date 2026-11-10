@@ -202,6 +202,7 @@ process.env.MINGGONGTU_AI_API_KEY = secret;
     leapMonth: false,
     sect: 2,
     trueSolar: false,
+    timeBasis: 'standard',
   });
   const baziContext = buildBaziAiContext(bazi, 1, 1998);
   const baziRes = await readJson(await post({
