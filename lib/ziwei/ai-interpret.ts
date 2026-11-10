@@ -19,7 +19,7 @@ export const CHAT_TURN_LIMITS = {
 } as const;
 
 export const AI_ERRORS = {
-  missingKey: '服务端未配置 AI 密钥，暂时不能回答。',
+  missingKey: '还没有 AI 密钥。请打开设置页填写，填好后再来追问。',
   badRequest: '请求格式不对，请重新发送。',
   needChart: '请先起盘后再提问。',
   needBazi: '请先排好八字盘后再提问。',
@@ -95,7 +95,9 @@ export function ensureFirstDisclaimer(reply: string, turns: ChatTurn[]): string 
 }
 
 export async function completeInterpret(request: Request, fetchImpl: typeof fetch = fetch): Promise<Response> {
-  const apiKey = readAiApiKey();
+  const { resolveAiConnection } = await import('./ai-settings');
+  const connection = await resolveAiConnection();
+  const apiKey = connection.apiKey;
   if (!apiKey) return jsonError(AI_ERRORS.missingKey, 503);
 
   let payload: unknown;
@@ -111,14 +113,14 @@ export async function completeInterpret(request: Request, fetchImpl: typeof fetc
   const messages = buildDeepSeekMessages(prepared.context, prepared.turns, prepared.school);
   let upstream: Response;
   try {
-    upstream = await fetchImpl(DEEPSEEK_CHAT_COMPLETIONS_URL, {
+    upstream = await fetchImpl(connection.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
+        model: connection.model,
         messages,
         temperature: 0.6,
         stream: false,

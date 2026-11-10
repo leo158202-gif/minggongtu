@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { SafeMarkdown } from './ChatMarkdown';
 import type { AstroAiContext } from '@/lib/astro/ai-context';
@@ -200,7 +201,12 @@ export default function InsightChat({
         {loading && <p className="insight-ai-msg is-assistant">正在想…</p>}
       </div>
 
-      {error && <p className="insight-ai-error" role="alert" data-testid="insight-ai-error">{error}</p>}
+      {error && (
+        <p className="insight-ai-error" role="alert" data-testid="insight-ai-error">
+          {error}
+          {error.includes('设置') && <> <Link href="/settings">打开设置页</Link></>}
+        </p>
+      )}
 
       {ready && !loading && messages.some(message => message.role === 'assistant') && (
         <div className="insight-ai-quick" role="group" aria-label="快捷追问">

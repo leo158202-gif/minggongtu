@@ -382,6 +382,7 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ color: 'var(--tx-3)', fontSize: 12 }}>v{APP_VERSION}</span>
+          <Link href="/settings" data-testid="ai-settings-link" style={{ color: 'var(--ac)', fontSize: 12, textDecoration: 'none' }}>AI 设置</Link>
           {bundle && (
             <button
               type="button"

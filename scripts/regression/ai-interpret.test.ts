@@ -3,7 +3,10 @@
  * 有密钥时 mock DeepSeek，请求体要带盘面上下文和免责要求。
  * 跑: npx tsx scripts/regression/ai-interpret.test.ts
  */
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+process.env.MINGGONGTU_AI_CONFIG = path.join(mkdtempSync(path.join(tmpdir(), 'mgt-ai-')), 'none.json');
 import { generateChart } from '../../lib/ziwei/algorithm';
 import { buildAiChartContext } from '../../lib/ziwei/ai-chart-context';
 import { buildBaziAiContext } from '../../lib/bazi/ai-context';
@@ -61,7 +64,7 @@ delete process.env.MINGGONGTU_AI_API_KEY;
 {
   const missing = await readJson(await post({ messages: [{ role: 'user', content: question }], context: daxian }));
   if (missing.status === 500 || missing.status < 400) fail(`无密钥时状态不对: ${missing.status}`);
-  else if (!missing.json || missing.json.error !== AI_ERRORS.missingKey) fail('无密钥时没有明确的中文错误');
+  else if (!missing.json || missing.json.error !== AI_ERRORS.missingKey || !String(missing.json.error).includes('设置')) fail('无密钥时没有明确指出去设置页');
   else if ('stack' in missing.json || leaksStack(missing.text)) fail('无密钥时响应泄露了堆栈');
   else ok('无密钥时返回明确错误，且没有堆栈');
 

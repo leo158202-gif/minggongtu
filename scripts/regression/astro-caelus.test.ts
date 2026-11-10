@@ -3,7 +3,10 @@
  * 度数对齐该库 0.25.0 的公开样例，不是本项目的独立星历复算。
  * 跑: npx tsx scripts/regression/astro-caelus.test.ts
  */
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+process.env.MINGGONGTU_AI_CONFIG = path.join(mkdtempSync(path.join(tmpdir(), 'mgt-ai-')), 'none.json');
 import { buildAstroAiContext } from '../../lib/astro/ai-context';
 import { castAstro } from '../../lib/astro/cast';
 import { ASTRO_ERRORS } from '../../lib/astro/errors';
