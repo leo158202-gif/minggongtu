@@ -207,6 +207,13 @@ else if (shifted.chartDatetime !== direct.chartDateTime) fail('封装和库的�
 else if (shifted.chartDatetime === doubled.chartDateTime) fail('预先平移后再打开真太阳时，结果却和一次校正相同');
 else ok(`真太阳时只校正一次：${unshifted.chartDatetime} → ${shifted.chartDatetime}`);
 
+const board = readFileSync('components/BaziBoard.tsx', 'utf8');
+if (/空亡|地势|自坐|父母|祖辈/.test(board) || board.includes('calculateChart')) {
+  fail('八字页写入了库没有返回的栏，或在界面里重新排盘');
+} else if (!board.includes('天干') || !board.includes('地支') || !board.includes('藏干') || !board.includes('bazi-sheet')) {
+  fail('四柱表没有按行对齐天干、地支和藏干');
+} else ok('四柱表只排已有字段，不另算空亡、地势或自坐');
+
 console.log('  · 未做界面：流月、流日。库能算，但本版没有单独验证后的选择器。');
 console.log('  · 未覆盖：出生地纬度、Asia/Shanghai 以外的时区。表单没有这些字段，调用时不编造。');
 console.log('  · 紫微真太阳时仍是经度差，八字真太阳时是库内的均时差和夏令时。测试不断言两套时辰相同。');

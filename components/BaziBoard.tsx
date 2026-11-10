@@ -22,6 +22,7 @@ export default function BaziBoard({ chart, decadeIndex, year, onDecadeChange, on
       <h2>四柱</h2>
       <p className="bazi-target" data-testid="bazi-reading-target">{target}</p>
       <p className="bazi-caliber" data-testid="bazi-caliber">
+        钟面 {chart.birthDate} {chart.birthTime}。排盘时刻 {chart.chartDatetime}。
         年柱、月柱按节气交换。输入按北京时间 Asia/Shanghai。子时：{chart.sectLabel}。
         {chart.trueSolar
           ? ` 真太阳时由八字库计算一次${chart.assumedMeridian120 ? '，未选出生地时经度按东经 120°' : ''}。${chart.dstApplied ? `这次夏令时修正 ${chart.dstMinutes ?? 0} 分钟。` : '这次没有夏令时修正。'}排盘时刻 ${chart.chartDatetime}。`
@@ -29,22 +30,7 @@ export default function BaziBoard({ chart, decadeIndex, year, onDecadeChange, on
         紫微时辰仍只用本站原来的经度差，两套校正不会叠在同一次计算上。
       </p>
 
-      <div className="bazi-pillars">
-        {chart.pillars.map(pillar => (
-          <article key={pillar.type} data-testid={`bazi-pillar-${pillar.type}`}>
-            <h3>{pillar.label}</h3>
-            <p className="bazi-ganzhi">{pillar.ganZhi}</p>
-            <p>天干 {pillar.tianGan} · 地支 {pillar.diZhi}</p>
-            {pillar.mainStar && <p>十神 {pillar.mainStar}</p>}
-            {pillar.wuXing && <p>五行 {pillar.wuXing}</p>}
-            {pillar.naYin && <p>纳音 {pillar.naYin}</p>}
-            {pillar.cangGanDetail.length > 0 && (
-              <p>藏干 {pillar.cangGanDetail.map(item => `${item.gan}${item.shiShen ? ` ${item.shiShen}` : ''}${item.wuXing ? ` ${item.wuXing}` : ''}`).join('、')}</p>
-            )}
-            {pillar.shenSha.length > 0 && <p>神煞 {pillar.shenSha.join('、')}</p>}
-          </article>
-        ))}
-      </div>
+      <PillarSheet pillars={chart.pillars} />
 
       <p className="bazi-meta" data-testid="bazi-day-master">
         日主 {chart.dayMaster}{chart.dayMasterElement}
@@ -97,8 +83,92 @@ export default function BaziBoard({ chart, decadeIndex, year, onDecadeChange, on
       </div>
 
       <p className="bazi-credit">
-        八字计算使用 xuantian-bazi {chart.engineVersion}（MIT，github.com/sfwal/xuantian-bazi）。界面是命宫图。神煞只列出库返回的名称，不作吉凶承诺。
+        八字计算使用 xuantian-bazi {chart.engineVersion}（MIT，github.com/sfwal/xuantian-bazi）。界面是命宫图。表内只列库已经返回的干支、十神、藏干、纳音、五行和神煞。神煞只列出名称，不作吉凶承诺。
       </p>
     </section>
   );
+}
+
+function PillarSheet({ pillars }: { pillars: BaziChartView['pillars'] }) {
+  const slots = Math.max(0, ...pillars.map(pillar => Math.max(pillar.cangGanDetail.length, pillar.cangGan.length)));
+  const showNaYin = pillars.some(pillar => pillar.naYin);
+  const showWuXing = pillars.some(pillar => pillar.wuXing);
+  const showShenSha = pillars.some(pillar => pillar.shenSha.length > 0);
+  return (
+    <div className="bazi-sheet" role="table" aria-label="四柱" data-testid="bazi-sheet">
+      <div role="columnheader" className="bazi-cell is-label" />
+      {pillars.map(pillar => (
+        <div key={pillar.type} role="columnheader" className="bazi-cell is-head" data-testid={`bazi-pillar-${pillar.type}`}>
+          {pillar.label}
+        </div>
+      ))}
+      <div role="rowheader" className="bazi-cell is-label">天干</div>
+      {pillars.map(pillar => (
+        <div key={`${pillar.type}-gan`} role="cell" className="bazi-cell bazi-stem">{pillar.tianGan}</div>
+      ))}
+      <div role="rowheader" className="bazi-cell is-label">十神</div>
+      {pillars.map(pillar => (
+        <div key={`${pillar.type}-star`} role="cell" className="bazi-cell">{pillar.mainStar}</div>
+      ))}
+      <div role="rowheader" className="bazi-cell is-label">地支</div>
+      {pillars.map(pillar => (
+        <div key={`${pillar.type}-zhi`} role="cell" className="bazi-cell bazi-branch">{pillar.diZhi}</div>
+      ))}
+      {Array.from({ length: slots }, (_, index) => (
+        <HiddenRows key={index} pillars={pillars} index={index} labeled={index === 0} />
+      ))}
+      {showNaYin && (
+        <>
+          <div role="rowheader" className="bazi-cell is-label">纳音</div>
+          {pillars.map(pillar => (
+            <div key={`${pillar.type}-nayin`} role="cell" className="bazi-cell is-wrap">{pillar.naYin}</div>
+          ))}
+        </>
+      )}
+      {showWuXing && (
+        <>
+          <div role="rowheader" className="bazi-cell is-label">五行</div>
+          {pillars.map(pillar => (
+            <div key={`${pillar.type}-wx`} role="cell" className="bazi-cell is-wrap">{pillar.wuXing}</div>
+          ))}
+        </>
+      )}
+      {showShenSha && (
+        <>
+          <div role="rowheader" className="bazi-cell is-label">神煞</div>
+          {pillars.map(pillar => (
+            <div key={`${pillar.type}-sha`} role="cell" className="bazi-cell is-wrap">{pillar.shenSha.join('、')}</div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+function HiddenRows({ pillars, index, labeled }: { pillars: BaziChartView['pillars']; index: number; labeled: boolean }) {
+  return (
+    <>
+      <div role="rowheader" className="bazi-cell is-label">{labeled ? '藏干' : ''}</div>
+      {pillars.map(pillar => {
+        const hidden = hiddenAt(pillar, index);
+        return (
+          <div key={`${pillar.type}-cang-${index}`} role="cell" className="bazi-cell bazi-hidden">{hidden?.gan ?? ''}</div>
+        );
+      })}
+      <div role="rowheader" className="bazi-cell is-label">{labeled ? '十神' : ''}</div>
+      {pillars.map(pillar => {
+        const hidden = hiddenAt(pillar, index);
+        return (
+          <div key={`${pillar.type}-shi-${index}`} role="cell" className="bazi-cell">{hidden?.shiShen ?? ''}</div>
+        );
+      })}
+    </>
+  );
+}
+
+function hiddenAt(pillar: BaziChartView['pillars'][number], index: number): { gan: string; shiShen: string } | null {
+  const detail = pillar.cangGanDetail[index];
+  if (detail) return { gan: detail.gan, shiShen: detail.shiShen };
+  const gan = pillar.cangGan[index];
+  return gan ? { gan, shiShen: '' } : null;
 }

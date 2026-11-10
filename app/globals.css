@@ -474,25 +474,67 @@ body {
   color: var(--t-gold);
   font-weight: 600;
 }
-.bazi-pillars {
+.bazi-sheet {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: 3.25rem repeat(4, minmax(0, 1fr));
+  width: 100%;
+  max-width: 100%;
   margin: 12px 0;
-}
-.bazi-pillars article {
-  padding: 10px;
-  border-radius: 10px;
   border: 1px solid var(--t-border);
+  border-radius: 12px;
   background: var(--t-bg);
+  overflow: hidden;
 }
-.bazi-ganzhi {
-  margin: 0 0 6px;
-  font-size: 22px;
-  font-weight: 700;
+.bazi-cell {
+  min-width: 0;
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--t-border);
+  border-left: 1px solid var(--t-border);
+  text-align: center;
+  color: var(--t-text);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.bazi-cell.is-label {
+  border-left: 0;
+  text-align: left;
+  padding-left: 6px;
+  color: var(--t-faint);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+.bazi-cell.is-head {
   color: var(--t-gold);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.04em;
 }
-.bazi-pillars p,
+.bazi-stem,
+.bazi-branch {
+  font-size: clamp(28px, 7vw, 40px);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--t-gold);
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.bazi-hidden {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--t-text);
+}
+.bazi-cell.is-wrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.bazi-board,
+.bazi-cycle-block {
+  min-width: 0;
+  max-width: 100%;
+}
 .bazi-cycles {
   font-size: 12px;
   line-height: 1.6;
@@ -505,8 +547,10 @@ body {
   font-size: 12px;
   color: var(--t-faint);
 }
-@media (max-width: 700px) {
-  .bazi-pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 390px) {
+  .bazi-sheet { grid-template-columns: 2.75rem repeat(4, minmax(0, 1fr)); }
+  .bazi-cell.is-label { font-size: 12px; padding-left: 4px; }
+  .bazi-cell.is-head { font-size: 13px; }
 }
 .astro-fields {
   display: grid;
