@@ -528,21 +528,110 @@ body {
 }
 .bazi-sheet {
   display: grid;
-  grid-template-columns: 3.25rem repeat(4, minmax(0, 1fr));
+  grid-template-columns: 2.35rem repeat(4, minmax(0, 1fr));
   width: 100%;
-  max-width: 100%;
+  max-width: 420px;
   margin: 12px 0;
-  border: 1px solid rgba(80, 60, 30, 0.08);
-  border-radius: 12px;
-  background: #fffdf8;
+  border: 0;
+  border-radius: 10px;
+  background: #f4efe6;
   overflow: hidden;
+  justify-self: start;
+}
+.bazi-cell {
+  min-width: 0;
+  padding: 3px 2px;
+  border: 0;
+  text-align: center;
+  color: #5c5348;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 400;
+}
+.bazi-cell.band-main { background: #fbf8f3; }
+.bazi-cell.band-hidden { background: #f3eee6; }
+.bazi-cell.band-star { background: #f7f3ec; }
+.bazi-cell.band-nayin { background: #fbf8f3; }
+.bazi-cell.band-sha { background: #f3eee6; }
+.bazi-cell.is-label {
+  text-align: left;
+  padding-left: 6px;
+  color: #9a9084;
+  font-size: 12px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+}
+.bazi-cell.is-head {
+  color: #8d8478;
+  font-weight: 400;
+  font-size: 13px;
+  padding-top: 10px;
+  padding-bottom: 2px;
+}
+.bazi-minor {
+  color: #8a8176;
+  font-size: 12px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.bazi-stem,
+.bazi-branch {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+.bazi-branch { padding-bottom: 8px; }
+.bazi-cell.is-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.bazi-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+.bazi-stack > span {
+  display: block;
+  height: 20px;
+  line-height: 20px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.bazi-nayin {
+  font-size: 13px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.band-sha .bazi-stack > span {
+  height: 22px;
+  line-height: 22px;
+  font-size: 12px;
+  color: #6d645a;
 }
 .wx-金 { color: #8a7340; }
 .wx-木 { color: #3f7a48; }
 .wx-水 { color: #3a6d8c; }
 .wx-火 { color: #a34b3a; }
 .wx-土 { color: #8a6238; }
-[data-theme="dark"] .bazi-sheet,
+[data-theme="dark"] .bazi-sheet { background: #1a1612; }
+[data-theme="dark"] .bazi-cell.band-main,
+[data-theme="dark"] .bazi-cell.band-nayin { background: #221c17; }
+[data-theme="dark"] .bazi-cell.band-hidden,
+[data-theme="dark"] .bazi-cell.band-sha { background: #1a1612; }
+[data-theme="dark"] .bazi-cell.band-star { background: #241e18; }
+[data-theme="dark"] .bazi-cell,
+[data-theme="dark"] .bazi-minor,
+[data-theme="dark"] .bazi-cell.is-head,
+[data-theme="dark"] .bazi-cell.is-label,
+[data-theme="dark"] .band-sha .bazi-stack > span { color: #cbbba4; }
 [data-theme="dark"] .fold-edit {
   background: var(--t-bg);
   border-color: var(--t-border);
@@ -552,61 +641,6 @@ body {
 [data-theme="dark"] .wx-水 { color: #7eb0cc; }
 [data-theme="dark"] .wx-火 { color: #e08a78; }
 [data-theme="dark"] .wx-土 { color: #c4a074; }
-.bazi-cell {
-  min-width: 0;
-  padding: 7px 4px;
-  border-bottom: 1px solid var(--t-border);
-  border-left: 1px solid var(--t-border);
-  text-align: center;
-  color: var(--t-text);
-  font-size: 14px;
-  line-height: 1.35;
-}
-.bazi-cell.is-label {
-  border-left: 0;
-  text-align: left;
-  padding-left: 6px;
-  color: var(--t-faint);
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-}
-.bazi-cell.is-head {
-  color: var(--t-gold);
-  font-weight: 600;
-  font-size: 14px;
-  letter-spacing: 0.04em;
-}
-.bazi-stem,
-.bazi-branch {
-  font-size: clamp(28px, 7vw, 40px);
-  font-weight: 700;
-  line-height: 1.1;
-  color: var(--t-gold);
-  padding-top: 4px;
-  padding-bottom: 4px;
-}
-.bazi-stem.wx-金, .bazi-branch.wx-金 { color: #8a7340; }
-.bazi-stem.wx-木, .bazi-branch.wx-木 { color: #3f7a48; }
-.bazi-stem.wx-水, .bazi-branch.wx-水 { color: #3a6d8c; }
-.bazi-stem.wx-火, .bazi-branch.wx-火 { color: #a34b3a; }
-.bazi-stem.wx-土, .bazi-branch.wx-土 { color: #8a6238; }
-[data-theme="dark"] .bazi-stem.wx-金, [data-theme="dark"] .bazi-branch.wx-金 { color: #d4b36a; }
-[data-theme="dark"] .bazi-stem.wx-木, [data-theme="dark"] .bazi-branch.wx-木 { color: #7dba86; }
-[data-theme="dark"] .bazi-stem.wx-水, [data-theme="dark"] .bazi-branch.wx-水 { color: #7eb0cc; }
-[data-theme="dark"] .bazi-stem.wx-火, [data-theme="dark"] .bazi-branch.wx-火 { color: #e08a78; }
-[data-theme="dark"] .bazi-stem.wx-土, [data-theme="dark"] .bazi-branch.wx-土 { color: #c4a074; }
-.bazi-hidden {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--t-text);
-}
-.bazi-cell.is-wrap {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  font-size: 13px;
-  line-height: 1.45;
-}
 .bazi-board,
 .bazi-cycle-block {
   min-width: 0;
@@ -625,9 +659,14 @@ body {
   color: var(--t-faint);
 }
 @media (max-width: 390px) {
-  .bazi-sheet { grid-template-columns: 2.75rem repeat(4, minmax(0, 1fr)); }
-  .bazi-cell.is-label { font-size: 12px; padding-left: 4px; }
-  .bazi-cell.is-head { font-size: 13px; }
+  .bazi-sheet { grid-template-columns: 2.15rem repeat(4, minmax(0, 1fr)); }
+  .bazi-cell.is-label { font-size: 11px; padding-left: 4px; }
+  .bazi-stem, .bazi-branch { font-size: 24px; }
+  .bazi-stack > span, .bazi-nayin { font-size: 12px; }
+}
+@media (min-width: 900px) {
+  .bazi-sheet { max-width: 440px; }
+  .bazi-stem, .bazi-branch { font-size: 28px; }
 }
 .astro-fields {
   display: grid;

@@ -129,7 +129,7 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
   const [school, setSchool] = useState<School>(initialSchool);
   const [calendar, setCalendar] = useState<BaziCalendar>('solar');
   const [leapMonth, setLeapMonth] = useState(false);
-  const [trueSolar, setTrueSolar] = useState(true);
+  const [trueSolar, setTrueSolar] = useState(false);
   const [sect, setSect] = useState<BaziSect>(2);
   const [astroPlace, setAstroPlace] = useState<AstroPlaceState>(DEFAULT_ASTRO_PLACE);
   const [bundle, setBundle] = useState<CastBundle | null>(null);
@@ -436,7 +436,7 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
                   sect={bundle.raw.sect}
                   onCalendar={(value) => recastSettings({ calendar: value, leapMonth: value === 'lunar' ? bundle.raw.leapMonth : false })}
                   onLeap={(value) => recastSettings({ leapMonth: value })}
-                  onTrueSolar={(value) => recastSettings({ trueSolar: value })}
+                  onTrueSolar={(value) => { setTrueSolar(value); recastSettings({ trueSolar: value }); }}
                   onSect={(value) => recastSettings({ sect: value })}
                 />
                 <BirthForm

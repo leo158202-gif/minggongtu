@@ -112,89 +112,106 @@ function elementOf(char: string): string {
   if ('戊己辰戌丑未'.includes(char)) return '土';
   if ('庚辛申酉'.includes(char)) return '金';
   if ('壬癸亥子'.includes(char)) return '水';
-  return '土';
+  return '';
+}
+
+function knownElement(value: string): string {
+  const char = value.trim().slice(0, 1);
+  return '金木水火土'.includes(char) ? char : '';
+}
+
+interface HiddenItem {
+  gan: string;
+  element: string;
+  shiShen: string;
+}
+
+function hiddenItems(pillar: BaziChartView['pillars'][number]): HiddenItem[] {
+  if (pillar.cangGanDetail.length > 0) {
+    return pillar.cangGanDetail.map(item => ({
+      gan: item.gan,
+      element: knownElement(item.wuXing) || elementOf(item.gan),
+      shiShen: item.shiShen,
+    }));
+  }
+  return pillar.cangGan.map(gan => ({ gan, element: elementOf(gan), shiShen: '' }));
 }
 
 function PillarSheet({ pillars }: { pillars: BaziChartView['pillars'] }) {
-  const slots = Math.max(0, ...pillars.map(pillar => Math.max(pillar.cangGanDetail.length, pillar.cangGan.length)));
   const showNaYin = pillars.some(pillar => pillar.naYin);
-  const showWuXing = pillars.some(pillar => pillar.wuXing);
   const showShenSha = pillars.some(pillar => pillar.shenSha.length > 0);
+  const showHidden = pillars.some(pillar => hiddenItems(pillar).length > 0);
   return (
     <div className="bazi-sheet" role="table" aria-label="四柱" data-testid="bazi-sheet">
-      <div role="columnheader" className="bazi-cell is-label" />
+      <div role="columnheader" className="bazi-cell is-label band-main" />
       {pillars.map(pillar => (
-        <div key={pillar.type} role="columnheader" className="bazi-cell is-head" data-testid={`bazi-pillar-${pillar.type}`}>
+        <div key={pillar.type} role="columnheader" className="bazi-cell is-head band-main" data-testid={`bazi-pillar-${pillar.type}`}>
           {pillar.label}
         </div>
       ))}
-      <div role="rowheader" className="bazi-cell is-label">天干</div>
+      <div role="rowheader" className="bazi-cell is-label band-main">干神</div>
       {pillars.map(pillar => (
-        <div key={`${pillar.type}-gan`} role="cell" className={`bazi-cell bazi-stem wx-${elementOf(pillar.tianGan)}`}>{pillar.tianGan}</div>
+        <div key={`${pillar.type}-star`} role="cell" className="bazi-cell bazi-minor band-main">{pillar.mainStar}</div>
       ))}
-      <div role="rowheader" className="bazi-cell is-label">十神</div>
+      <div role="rowheader" className="bazi-cell is-label band-main">天干</div>
       {pillars.map(pillar => (
-        <div key={`${pillar.type}-star`} role="cell" className="bazi-cell">{pillar.mainStar}</div>
+        <div key={`${pillar.type}-gan`} role="cell" className={`bazi-cell bazi-stem band-main wx-${elementOf(pillar.tianGan)}`}>{pillar.tianGan}</div>
       ))}
-      <div role="rowheader" className="bazi-cell is-label">地支</div>
+      <div role="rowheader" className="bazi-cell is-label band-main">地支</div>
       {pillars.map(pillar => (
-        <div key={`${pillar.type}-zhi`} role="cell" className={`bazi-cell bazi-branch wx-${elementOf(pillar.diZhi)}`}>{pillar.diZhi}</div>
+        <div key={`${pillar.type}-zhi`} role="cell" className={`bazi-cell bazi-branch band-main wx-${elementOf(pillar.diZhi)}`}>{pillar.diZhi}</div>
       ))}
-      {Array.from({ length: slots }, (_, index) => (
-        <HiddenRows key={index} pillars={pillars} index={index} labeled={index === 0} />
-      ))}
-      {showNaYin && (
+      {showHidden && (
         <>
-          <div role="rowheader" className="bazi-cell is-label">纳音</div>
+          <div role="rowheader" className="bazi-cell is-label band-hidden">藏干</div>
           {pillars.map(pillar => (
-            <div key={`${pillar.type}-nayin`} role="cell" className="bazi-cell is-wrap">{pillar.naYin}</div>
+            <div key={`${pillar.type}-cang`} role="cell" className="bazi-cell is-stack band-hidden" data-testid={`bazi-hidden-${pillar.type}`}>
+              <div className="bazi-stack">
+                {hiddenItems(pillar).map((item, index) => (
+                  <span key={`${item.gan}-${index}`} className={item.element ? `wx-${item.element}` : undefined}>
+                    {item.element ? `${item.gan}·${item.element}` : item.gan}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div role="rowheader" className="bazi-cell is-label band-star">支神</div>
+          {pillars.map(pillar => (
+            <div key={`${pillar.type}-shi`} role="cell" className="bazi-cell is-stack band-star" data-testid={`bazi-shishen-${pillar.type}`}>
+              <div className="bazi-stack">
+                {hiddenItems(pillar).map((item, index) => (
+                  <span key={`${item.shiShen}-${index}`} className={item.element ? `wx-${item.element}` : undefined}>{item.shiShen}</span>
+                ))}
+              </div>
+            </div>
           ))}
         </>
       )}
-      {showWuXing && (
+      {showNaYin && (
         <>
-          <div role="rowheader" className="bazi-cell is-label">五行</div>
-          {pillars.map(pillar => (
-            <div key={`${pillar.type}-wx`} role="cell" className="bazi-cell is-wrap">{pillar.wuXing}</div>
-          ))}
+          <div role="rowheader" className="bazi-cell is-label band-nayin">纳音</div>
+          {pillars.map(pillar => {
+            const element = knownElement(pillar.naYin.slice(-1));
+            return (
+              <div key={`${pillar.type}-nayin`} role="cell" className={`bazi-cell bazi-nayin band-nayin${element ? ` wx-${element}` : ''}`}>{pillar.naYin}</div>
+            );
+          })}
         </>
       )}
       {showShenSha && (
         <>
-          <div role="rowheader" className="bazi-cell is-label">神煞</div>
+          <div role="rowheader" className="bazi-cell is-label band-sha">神煞</div>
           {pillars.map(pillar => (
-            <div key={`${pillar.type}-sha`} role="cell" className="bazi-cell is-wrap">{pillar.shenSha.join('、')}</div>
+            <div key={`${pillar.type}-sha`} role="cell" className="bazi-cell is-stack band-sha" data-testid={`bazi-shensha-${pillar.type}`}>
+              <div className="bazi-stack">
+                {pillar.shenSha.map((name, index) => (
+                  <span key={`${name}-${index}`}>{name}</span>
+                ))}
+              </div>
+            </div>
           ))}
         </>
       )}
     </div>
   );
-}
-
-function HiddenRows({ pillars, index, labeled }: { pillars: BaziChartView['pillars']; index: number; labeled: boolean }) {
-  return (
-    <>
-      <div role="rowheader" className="bazi-cell is-label">{labeled ? '藏干' : ''}</div>
-      {pillars.map(pillar => {
-        const hidden = hiddenAt(pillar, index);
-        return (
-          <div key={`${pillar.type}-cang-${index}`} role="cell" className="bazi-cell bazi-hidden">{hidden?.gan ?? ''}</div>
-        );
-      })}
-      <div role="rowheader" className="bazi-cell is-label">{labeled ? '十神' : ''}</div>
-      {pillars.map(pillar => {
-        const hidden = hiddenAt(pillar, index);
-        return (
-          <div key={`${pillar.type}-shi-${index}`} role="cell" className="bazi-cell">{hidden?.shiShen ?? ''}</div>
-        );
-      })}
-    </>
-  );
-}
-
-function hiddenAt(pillar: BaziChartView['pillars'][number], index: number): { gan: string; shiShen: string } | null {
-  const detail = pillar.cangGanDetail[index];
-  if (detail) return { gan: detail.gan, shiShen: detail.shiShen };
-  const gan = pillar.cangGan[index];
-  return gan ? { gan, shiShen: '' } : null;
 }
