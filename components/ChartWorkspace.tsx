@@ -127,6 +127,7 @@ function castLocal(raw: RawBirth): Pick<CastBundle, 'ziwei' | 'ziweiError' | 'ba
 export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSchool?: School }) {
   const { theme, toggle } = useTheme();
   const [school, setSchool] = useState<School>(initialSchool);
+  const [mobilePane, setMobilePane] = useState<'chart' | 'insight'>('chart');
   const [calendar, setCalendar] = useState<BaziCalendar>('solar');
   const [leapMonth, setLeapMonth] = useState(false);
   const [trueSolar, setTrueSolar] = useState(false);
@@ -184,6 +185,10 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
       bundle.astro?.longitude ?? '',
       bundle.astro?.timeStatus ?? '',
       bundle.raw.timeBasis ?? '',
+      timeView,
+      decadeIndex,
+      flowYear ?? '',
+      astroTransitOpen ? 1 : 0,
     ].join('|')
     : `${school}|empty`;
 
@@ -424,7 +429,13 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
           <button type="button" data-testid="school-astro" className={school === 'astro' ? 'is-on' : undefined} aria-pressed={school === 'astro'} onClick={() => setSchool('astro')}>占星</button>
         </div>
 
-        <div className={showResult ? 'chart-result' : 'chart-result chart-result-empty'}>
+        {showResult && (
+          <div className="pane-switch" role="group" aria-label="排盘或解读">
+            <button type="button" data-testid="pane-chart" aria-pressed={mobilePane === 'chart'} onClick={() => setMobilePane('chart')}>排盘</button>
+            <button type="button" data-testid="pane-insight" aria-pressed={mobilePane === 'insight'} onClick={() => setMobilePane('insight')}>解读</button>
+          </div>
+        )}
+        <div className={showResult ? 'chart-result' : 'chart-result chart-result-empty'} data-pane={mobilePane}>
           <div className="chart-main">
             {showResult && bundle && (
               <details className="fold-edit" data-testid="edit-birth">

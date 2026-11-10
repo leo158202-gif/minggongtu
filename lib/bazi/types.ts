@@ -62,6 +62,35 @@ export interface BaziElementView {
   score: number | null;
 }
 
+export interface BaziBalanceBar {
+  support: number;
+  oppose: number;
+  supportPct: number;
+  opposePct: number;
+}
+
+/** 扶抑参考。数值只在和库给出的强弱标签一致时才有。 */
+export interface BaziJudgement {
+  status: 'known' | 'unknown';
+  label: string;
+  dayMaster: string;
+  element: string;
+  season: string;
+  root: string;
+  support: string;
+  seasonNote: string;
+  rootNote: string;
+  supportNote: string;
+  useful: string[];
+  unfavorable: string[];
+  usefulNote: string;
+  caution: string;
+  pattern: string;
+  /** 库的格局名像从格或专旺时，不把扶抑喜用当成确定结论。 */
+  special: boolean;
+  bar: BaziBalanceBar | null;
+}
+
 export interface BaziChartView {
   engineName: 'xuantian-bazi';
   engineVersion: string;
@@ -81,6 +110,7 @@ export interface BaziChartView {
   zodiac: string;
   pillars: BaziPillarView[];
   fiveElements: BaziElementView[];
+  judgement: BaziJudgement;
   decades: BaziDecadeView[];
   startYun: string;
   dstApplied: boolean;

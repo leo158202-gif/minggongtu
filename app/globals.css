@@ -179,7 +179,7 @@ body {
   .chart-result-empty { grid-template-columns: minmax(0, 1fr); }
 }
 @media (min-width: 1024px) {
-  .chart-result { grid-template-columns: minmax(0, 1fr) 360px; }
+  .chart-result { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 @media (min-width: 1440px) {
   .workspace-shell { max-width: 1412px; }
@@ -203,11 +203,21 @@ body {
   height: calc(100vh - 88px);
   overflow: hidden;
 }
-.insight-panel.is-ready .insight-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  padding-right: 4px;
+.insight-fold {
+  margin: 0 0 8px;
+  border: 1px solid var(--t-border);
+  border-radius: 10px;
+  background: var(--t-bg);
+}
+.insight-fold summary {
+  cursor: pointer;
+  padding: 8px 10px;
+  color: var(--t-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.insight-fold > :not(summary) {
+  margin: 0 10px 10px;
 }
 .insight-panel-head h2 {
   margin: 0;
@@ -307,12 +317,14 @@ body {
   color: var(--t-faint);
 }
 .insight-ai {
-  flex: none;
-  margin-top: 14px;
-  padding-top: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid var(--t-border);
-  max-height: 48%;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .insight-ai h3 {
   margin: 0 0 6px;
@@ -335,10 +347,21 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 0 0 10px;
-  max-height: 200px;
+  margin: 0;
+  flex: 1 1 auto;
+  min-height: 120px;
   overflow: auto;
+  padding-bottom: 16px;
 }
+.md-safe p,
+.md-safe ul,
+.md-safe ol {
+  margin: 0 0 8px;
+}
+.md-safe ul,
+.md-safe ol { padding-left: 1.2em; }
+.md-safe li { margin: 0 0 4px; }
+.md-safe strong { font-weight: 700; color: var(--t-text); }
 .insight-ai-msg {
   margin: 0;
   padding: 8px 10px;
@@ -383,6 +406,9 @@ body {
   display: flex;
   gap: 8px;
   align-items: flex-end;
+  flex: 0 0 auto;
+  width: 100%;
+  padding-top: 8px;
 }
 .insight-ai-form textarea {
   flex: 1;
@@ -399,7 +425,10 @@ body {
   font-family: inherit;
 }
 .insight-ai-form button {
-  padding: 8px 12px;
+  flex: 0 0 auto;
+  min-width: 64px;
+  min-height: 40px;
+  padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid var(--t-border-acc);
   background: var(--ac-bg);
@@ -424,6 +453,7 @@ body {
   margin: 0 0 16px;
 }
 .school-switch button,
+.pane-switch button,
 .bazi-settings button,
 .bazi-cycles button {
   padding: 6px 12px;
@@ -435,6 +465,7 @@ body {
   cursor: pointer;
 }
 .school-switch button.is-on,
+.pane-switch button[aria-pressed="true"],
 .bazi-settings button.is-on,
 .bazi-cycles button.is-on {
   border-color: var(--t-border-acc);
@@ -843,7 +874,11 @@ body {
   .astro-fields,
   .astro-angles { grid-template-columns: 1fr; }
 }
+.pane-switch { display: none; margin: 0 0 12px; }
 @media (max-width: 900px) {
+  .pane-switch { display: flex; }
+  .chart-result[data-pane="chart"] .insight-panel { display: none; }
+  .chart-result[data-pane="insight"] .chart-main { display: none; }
   .insight-panel,
   .insight-panel.is-ready {
     position: static;
@@ -852,12 +887,69 @@ body {
     display: block;
     overflow: visible;
   }
-  .insight-panel.is-ready .insight-scroll,
-  .insight-ai {
+  .insight-ai,
+  .insight-ai-log {
     overflow: visible;
     max-height: none;
+    min-height: 0;
+  }
+  .insight-ai-form {
+    position: sticky;
+    bottom: 0;
+    background: var(--t-surface);
+    padding-bottom: 12px;
   }
 }
+.bazi-judge {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 14px 0;
+}
+.bazi-judge-card {
+  min-width: 0;
+  padding: 14px 14px 12px;
+  border-radius: 12px;
+  background: #fbf8f3;
+  border: 1px solid rgba(80, 60, 30, 0.08);
+}
+.bazi-judge-card h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--t-text);
+}
+.bazi-judge-kicker,
+.bazi-judge-card p,
+.bazi-judge-card li {
+  margin: 6px 0 0;
+  color: var(--t-text2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.bazi-judge-kicker { font-size: 12px; color: var(--t-faint); }
+.bazi-judge-result {
+  font-size: 20px;
+  font-weight: 650;
+  color: var(--t-text);
+}
+.bazi-judge-card ul { margin: 8px 0 0; padding-left: 1.1em; }
+.bazi-judge-card details { margin-top: 8px; }
+.bazi-judge-card summary { cursor: pointer; color: var(--t-text2); }
+.bazi-balance-track {
+  display: flex;
+  height: 8px;
+  margin-top: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #eadfd0;
+}
+.bazi-balance-track .is-support { background: #6f9474; }
+.bazi-balance-track .is-oppose { background: #b57a72; }
+@container (min-width: 560px) {
+  .bazi-judge { grid-template-columns: 1fr 1fr; }
+}
+[data-theme="dark"] .bazi-judge-card { background: #221c17; border-color: var(--t-border); }
 
 /* ─── 工具类 ─────────────────────────────────────────────── */
 

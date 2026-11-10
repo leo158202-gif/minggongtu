@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { SafeMarkdown } from './ChatMarkdown';
 import type { AstroAiContext } from '@/lib/astro/ai-context';
 import type { BaziAiContext } from '@/lib/bazi/ai-context';
 import { buildAiChartContext, type AiView } from '@/lib/ziwei/ai-chart-context';
@@ -16,6 +17,7 @@ interface InsightChatProps {
   baziContext?: BaziAiContext | null;
   astroContext?: AstroAiContext | null;
   conversationKey?: string;
+  preface?: ReactNode;
 }
 
 interface Turn {
@@ -34,6 +36,7 @@ export default function InsightChat({
   baziContext = null,
   astroContext = null,
   conversationKey,
+  preface,
 }: InsightChatProps) {
   const ziweiReady = school === 'ziwei' && hasReadableChart(chart);
   const baziReady = school === 'bazi' && !!baziContext;
@@ -53,6 +56,7 @@ export default function InsightChat({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
+  const stickRef = useRef(true);
   const sessionRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -67,7 +71,12 @@ export default function InsightChat({
 
   useEffect(() => {
     const el = logRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el || !stickRef.current) return;
+    if (el.scrollHeight > el.clientHeight + 8) {
+      el.scrollTop = el.scrollHeight;
+      return;
+    }
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
   }, [messages, loading]);
 
   const contextLabel = school === 'bazi'
@@ -147,20 +156,28 @@ export default function InsightChat({
       )}
       <p className="insight-ai-context" data-testid="insight-ai-context">{contextLabel}</p>
 
-      {(messages.length > 0 || loading) && (
-        <div ref={logRef} className="insight-ai-log" aria-live="polite">
-          {messages.map((message, index) => (
-            <p
-              key={`${message.role}-${index}`}
-              className={message.role === 'user' ? 'insight-ai-msg is-user' : 'insight-ai-msg is-assistant'}
-              data-testid={message.role === 'assistant' ? 'insight-ai-reply' : undefined}
-            >
-              {message.content}
-            </p>
-          ))}
-          {loading && <p className="insight-ai-msg is-assistant">正在想…</p>}
-        </div>
-      )}
+      <div
+        ref={logRef}
+        className="insight-ai-log"
+        aria-live="polite"
+        data-testid="insight-ai-log"
+        onScroll={event => {
+          const el = event.currentTarget;
+          stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 64;
+        }}
+      >
+        {preface}
+        {messages.map((message, index) => (
+          <div
+            key={`${message.role}-${index}`}
+            className={message.role === 'user' ? 'insight-ai-msg is-user' : 'insight-ai-msg is-assistant'}
+            data-testid={message.role === 'assistant' ? 'insight-ai-reply' : 'insight-ai-user'}
+          >
+            <SafeMarkdown text={message.content} />
+          </div>
+        ))}
+        {loading && <p className="insight-ai-msg is-assistant">正在想…</p>}
+      </div>
 
       {error && <p className="insight-ai-error" role="alert" data-testid="insight-ai-error">{error}</p>}
 

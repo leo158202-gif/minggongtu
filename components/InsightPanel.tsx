@@ -62,14 +62,9 @@ export default function InsightPanel({
     return () => cancelAnimationFrame(frame);
   }, [questionId]);
 
-  return (
-    <aside className={(reading || baziContext || astroContext) ? 'insight-panel is-ready' : 'insight-panel'} aria-label="解读" data-testid="insight-panel">
-      <header className="insight-panel-head">
-        <h2>解读</h2>
-        <p className="insight-kicker">{school === 'bazi' ? '当前解读的是八字盘' : school === 'astro' ? '当前看的是西洋星盘' : '上面是固定说明，下面可以继续问'}</p>
-      </header>
-
-      <div className="insight-scroll">
+  const preface = (
+    <details className="insight-fold" data-testid="insight-summary">
+      <summary>{school === 'bazi' ? (baziContext?.readingTarget ?? '还没有八字盘') : school === 'astro' ? (astroContext?.readingTarget ?? '还没有星盘') : (reading?.layerLabel ?? '还没有命盘')}</summary>
       {school === 'astro' ? (
         <div className="insight-block" data-testid="astro-insight">
           <h3>正在看的盘</h3>
@@ -163,8 +158,17 @@ export default function InsightPanel({
           <p className="insight-foot">以上按当前命盘填入宫位和星曜，没有调用外部解读接口。</p>
         </>
       )}
-      </div>
+    </details>
+  );
+
+  return (
+    <aside className={(reading || baziContext || astroContext) ? 'insight-panel is-ready' : 'insight-panel'} aria-label="解读" data-testid="insight-panel">
+      <header className="insight-panel-head">
+        <h2>解读</h2>
+        <p className="insight-kicker">{school === 'bazi' ? '当前解读的是八字盘' : school === 'astro' ? '当前看的是西洋星盘' : '固定说明默认收起，下面可以继续问'}</p>
+      </header>
       <InsightChat
+        preface={preface}
         chart={school === 'ziwei' ? chart : null}
         timeView={timeView}
         liunianYear={liunianYear}

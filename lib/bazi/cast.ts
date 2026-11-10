@@ -6,6 +6,7 @@
  * 版权与许可证见 ./NOTICE.md。
  */
 import { calculateChart, ChartEngineError, getEngineInfo, type ChartResult } from 'xuantian-bazi';
+import { buildJudgement } from './judgement';
 import type {
   BaziCastInput,
   BaziChartView,
@@ -141,6 +142,30 @@ function toView(
   const dayMaster = text(chart.day_master);
   const dayMasterElement = text(chart.day_master_element);
   if (!dayMaster || !dayMasterElement) throw new Error('八字库没有返回日主。');
+  const fiveElements = asArray(chart.five_elements_summary).map(readElement).filter((item): item is BaziElementView => !!item);
+  const analysis = record(chart.day_master_analysis);
+  const season = record(analysis.season);
+  const root = record(analysis.root);
+  const support = record(analysis.support);
+  const overall = record(analysis.overall);
+  const usefulSummary = record(chart.useful_element_summary);
+  const judgement = buildJudgement({
+    dayMaster,
+    element: dayMasterElement,
+    label: text(overall.label),
+    season: text(season.status),
+    root: text(root.status),
+    support: text(support.status),
+    seasonNote: text(season.description),
+    rootNote: text(root.description),
+    supportNote: text(support.description),
+    useful: stringList(chart.useful_elements),
+    unfavorable: stringList(chart.unfavorable_elements),
+    usefulNote: text(usefulSummary.description),
+    caution: text(usefulSummary.caution),
+    pattern: text(chart.pattern),
+    scores: fiveElements,
+  });
 
   return {
     engineName: 'xuantian-bazi',
@@ -160,7 +185,8 @@ function toView(
     dayMasterElement,
     zodiac: text(chart.zodiac),
     pillars,
-    fiveElements: asArray(chart.five_elements_summary).map(readElement).filter((item): item is BaziElementView => !!item),
+    fiveElements,
+    judgement,
     decades: asArray(chart.decade_cycles).map(readDecade).filter((item): item is BaziDecadeView => !!item),
     startYun: text(chart.start_yun_desc),
     dstApplied: meta.presetDstMinutes !== null || corrections.dst_applied === true || dst.dstApplied === true,
@@ -249,6 +275,10 @@ function publicBaziError(message: string): string {
     .replace('农历 birth_date 日期超出该月实际天数', '这个农历日期不存在')
     .replace('农历 birth_date 的月份或日期无效', '农历月份或日期无效')
     .replace('is_leap_month 仅适用于农历日期', '闰月只用于农历');
+}
+
+function stringList(value: unknown): string[] {
+  return asArray(value).map(text).filter(Boolean);
 }
 
 function record(value: unknown): Record<string, unknown> {

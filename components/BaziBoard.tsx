@@ -43,6 +43,7 @@ export default function BaziBoard({ chart, decadeIndex, year, onDecadeChange, on
       </details>
 
       <PillarSheet pillars={chart.pillars} />
+      <JudgementCards chart={chart} />
 
       <p className="bazi-meta" data-testid="bazi-day-master">
         日主 {chart.dayMaster}{chart.dayMasterElement}
@@ -103,6 +104,65 @@ export default function BaziBoard({ chart, decadeIndex, year, onDecadeChange, on
         八字计算使用 xuantian-bazi {chart.engineVersion}（MIT，github.com/sfwal/xuantian-bazi）。界面是命宫图。表内只列库已经返回的干支、十神、藏干、纳音、五行和神煞。神煞只列出名称，不作吉凶承诺。
       </p>
     </section>
+  );
+}
+
+function JudgementCards({ chart }: { chart: BaziChartView }) {
+  const item = chart.judgement;
+  const known = item.status === 'known' && item.label;
+  return (
+    <div className="bazi-judge" data-testid="bazi-judge">
+      <article className="bazi-judge-card" data-testid="bazi-strength">
+        <h3>身强身弱</h3>
+        <p className="bazi-judge-kicker">日主强弱 · 扶抑法参考</p>
+        {known ? (
+          <>
+            <p className="bazi-judge-result">{item.dayMaster} 日 · {item.label}</p>
+            {item.bar && (
+              <div className="bazi-balance" data-testid="bazi-balance">
+                <div className="bazi-balance-track" aria-hidden="true">
+                  <span className="is-support" style={{ width: `${item.bar.supportPct}%` }} />
+                  <span className="is-oppose" style={{ width: `${item.bar.opposePct}%` }} />
+                </div>
+                <p>助身 {item.bar.support}（{item.bar.supportPct}%） · 耗身 {item.bar.oppose}（{item.bar.opposePct}%）</p>
+              </div>
+            )}
+            <ul>
+              {item.season && <li>月令 {item.season}</li>}
+              {item.root && <li>通根 {item.root}</li>}
+              {item.support && <li>天干生扶 {item.support}</li>}
+            </ul>
+          </>
+        ) : (
+          <p data-testid="bazi-strength-unknown">这次没有可核验的身强身弱，未判定。</p>
+        )}
+        <details>
+          <summary>判据</summary>
+          <p>
+            来自 xuantian-bazi {chart.engineVersion}（MIT）。强弱标题用库给出的标签。
+            助身是印与比劫，耗身是食伤、财、官杀，权重是库返回的五行分值。分值和对不上库的标签时不画条。
+            这是扶抑，不是调候，也不是格局取用。从格和专旺没有单独识别，接近特殊格局时待复核，不是确定结论。
+            传统命理规则，仅供参考。
+          </p>
+          {item.seasonNote && <p>{item.seasonNote}</p>}
+          {item.rootNote && <p>{item.rootNote}</p>}
+          {item.supportNote && <p>{item.supportNote}</p>}
+        </details>
+      </article>
+      <article className="bazi-judge-card" data-testid="bazi-useful">
+        <h3>喜用神</h3>
+        <p className="bazi-judge-kicker">扶抑法参考 · 不是调候或格局综合用神</p>
+        {item.useful.length > 0 ? (
+          <p className="bazi-judge-result" data-testid="bazi-useful-list">喜用 {item.useful.join('、')}</p>
+        ) : (
+          <p data-testid="bazi-useful-unknown">这次没有可核验的喜用五行，未判定。</p>
+        )}
+        {item.unfavorable.length > 0 && <p>扶抑里相对的一方 {item.unfavorable.join('、')}</p>}
+        {item.usefulNote && <p>{item.usefulNote}</p>}
+        {item.pattern && <p>库另给格局名「{item.pattern}」。这次喜用不由格局推出。{item.special ? '这个名字接近特殊格局，喜用待复核。' : ''}</p>}
+        <p>传统命理规则，仅供参考。这里不保证趋吉避凶。</p>
+      </article>
+    </div>
   );
 }
 
