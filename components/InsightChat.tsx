@@ -56,7 +56,8 @@ export default function InsightChat({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
-  const stickRef = useRef(true);
+  const stickRef = useRef(false);
+  const seenMessages = useRef(0);
   const sessionRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -70,13 +71,32 @@ export default function InsightChat({
   }, [sessionKey]);
 
   useEffect(() => {
+    const onScroll = () => {
+      const el = logRef.current;
+      if (!el || el.getClientRects().length === 0) return;
+      stickRef.current = logFollowsBottom(el);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
     const el = logRef.current;
-    if (!el || !stickRef.current) return;
-    if (el.scrollHeight > el.clientHeight + 8) {
+    el?.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      el?.removeEventListener('scroll', onScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = logRef.current;
+    const appended = messages.length > seenMessages.current;
+    seenMessages.current = messages.length;
+    if (!el || el.getClientRects().length === 0 || !stickRef.current) return;
+    if (!appended && !loading) return;
+    if (logScrollsItself(el)) {
       el.scrollTop = el.scrollHeight;
       return;
     }
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+    const target = window.scrollY + el.getBoundingClientRect().bottom - window.innerHeight + 24;
+    if (target > window.scrollY + 8) window.scrollTo({ top: target, behavior: 'instant' });
   }, [messages, loading]);
 
   const contextLabel = school === 'bazi'
@@ -90,6 +110,7 @@ export default function InsightChat({
   const send = async (preset?: string) => {
     const question = (preset ?? input).trim();
     if (!ready || !question || loading) return;
+    stickRef.current = true;
     if (school === 'bazi' ? !baziContext : school === 'astro' ? !astroContext : !context) return;
     const nextMessages: Turn[] = [...messages, { role: 'user', content: question }];
     const seq = sessionRef.current;
@@ -218,6 +239,16 @@ export default function InsightChat({
       </form>
     </section>
   );
+}
+
+export function logScrollsItself(el: HTMLElement): boolean {
+  const overflow = getComputedStyle(el).overflowY;
+  return el.scrollHeight > el.clientHeight + 8 && overflow !== 'visible';
+}
+
+export function logFollowsBottom(el: HTMLElement): boolean {
+  if (logScrollsItself(el)) return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  return document.documentElement.scrollHeight - window.scrollY - window.innerHeight < 80;
 }
 
 function safeErrorMessage(value: unknown): string {
