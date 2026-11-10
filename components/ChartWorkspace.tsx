@@ -417,7 +417,7 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
         </div>
       </header>
 
-      <section style={{ maxWidth: 1280, margin: '0 auto', padding: showResult ? '20px 16px 48px' : '32px 16px 64px' }}>
+      <section className="workspace-shell" style={{ padding: showResult ? '20px 16px 48px' : '32px 16px 64px' }}>
         <div className="school-switch" role="group" aria-label="选择盘种" data-testid="school-switch">
           <button type="button" className={school === 'ziwei' ? 'is-on' : undefined} aria-pressed={school === 'ziwei'} onClick={() => setSchool('ziwei')}>紫微斗数</button>
           <button type="button" className={school === 'bazi' ? 'is-on' : undefined} aria-pressed={school === 'bazi'} onClick={() => setSchool('bazi')}>八字</button>
@@ -425,7 +425,7 @@ export default function ChartWorkspace({ initialSchool = 'ziwei' }: { initialSch
         </div>
 
         <div className={showResult ? 'chart-result' : 'chart-result chart-result-empty'}>
-          <div>
+          <div className="chart-main">
             {showResult && bundle && (
               <details className="fold-edit" data-testid="edit-birth">
                 <summary>编辑出生资料</summary>

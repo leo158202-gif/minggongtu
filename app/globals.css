@@ -154,6 +154,14 @@ body {
   box-shadow: var(--sh-sm);
 }
 
+.workspace-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.chart-main {
+  min-width: 0;
+  container-type: inline-size;
+}
 .chart-result {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
@@ -169,6 +177,12 @@ body {
 @media (max-width: 900px) {
   .chart-result,
   .chart-result-empty { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 1024px) {
+  .chart-result { grid-template-columns: minmax(0, 1fr) 360px; }
+}
+@media (min-width: 1440px) {
+  .workspace-shell { max-width: 1412px; }
 }
 
 .insight-panel {
@@ -664,9 +678,38 @@ body {
   .bazi-stem, .bazi-branch { font-size: 24px; }
   .bazi-stack > span, .bazi-nayin { font-size: 12px; }
 }
-@media (min-width: 900px) {
-  .bazi-sheet { max-width: 440px; }
-  .bazi-stem, .bazi-branch { font-size: 28px; }
+@container (min-width: 560px) {
+  .bazi-sheet {
+    width: 100%;
+    max-width: 1040px;
+    justify-self: stretch;
+    grid-template-columns: 2.75rem repeat(4, minmax(0, 1fr));
+  }
+  .bazi-cell.is-head { font-size: 15px; padding-top: 16px; padding-bottom: 6px; }
+  .bazi-minor { font-size: 13px; padding-bottom: 2px; }
+  .bazi-cell.is-label { font-size: 13px; }
+  .bazi-stem,
+  .bazi-branch { font-size: 36px; padding-top: 8px; padding-bottom: 8px; }
+  .bazi-branch { padding-bottom: 16px; }
+  .bazi-cell.is-stack { padding-top: 16px; padding-bottom: 16px; }
+  .bazi-stack > span { font-size: 15px; height: 26px; line-height: 26px; }
+  .bazi-nayin { font-size: 16px; padding-top: 14px; padding-bottom: 14px; }
+  .band-sha .bazi-stack > span { font-size: 14px; height: 26px; line-height: 26px; }
+}
+@container (min-width: 820px) {
+  .bazi-sheet { grid-template-columns: 3rem repeat(4, minmax(0, 1fr)); }
+  .bazi-cell.is-head { font-size: 16px; padding-top: 20px; padding-bottom: 8px; }
+  .bazi-stem,
+  .bazi-branch { font-size: 46px; }
+  .bazi-cell.is-stack { padding-top: 20px; padding-bottom: 22px; }
+  .bazi-stack > span { font-size: 16px; height: 28px; line-height: 28px; }
+  .bazi-nayin { font-size: 18px; }
+  .band-sha .bazi-stack > span { font-size: 15px; height: 28px; line-height: 28px; }
+}
+@container (min-width: 960px) {
+  .bazi-stem,
+  .bazi-branch { font-size: 52px; padding-top: 10px; }
+  .bazi-stack > span { font-size: 17px; height: 30px; line-height: 30px; }
 }
 .astro-fields {
   display: grid;
